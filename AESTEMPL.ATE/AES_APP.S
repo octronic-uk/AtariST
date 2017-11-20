@@ -16,10 +16,15 @@ main:
 	jsr		AES_graf_handle	
 	jsr		VDI_open_v_workstation
 	jsr		AES_wind_create
-	jsr		AES_wind_set
+	jsr		AES_wind_set_title
+	jsr		AES_wind_set_info
 	jsr		AES_wind_open
-	jsr		AES_appl_exit
+	
+main_loop:
+	jmp		main_loop
+	
 main_exit:
+	jsr		AES_appl_exit
 	move.w	#GEMDOS_PTERM0,-(sp)
 	trap	#TRAP_GEMDOS
 
@@ -164,8 +169,8 @@ AES_wind_open:
 	jsr		_call_AES
 	
 	rts
-	
-AES_wind_set:
+
+AES_wind_set_title:
 
 	movea.l	#AES_CONTROL,a0
 	move.w	#AES_WIND_SET,(a0)
@@ -178,6 +183,26 @@ AES_wind_set:
 	move.w	AES_WINDOW_HANDLE,(a0)	
 	move.w	#2,2(a0) ; WF_NAME
 	move.l	#STR_WINDOW_TITLE,4(a0)
+	move.w	#0,8(a0)
+	move.w	#0,10(a0)
+	
+	jsr		_call_AES
+	
+	rts
+	
+AES_wind_set_info:
+
+	movea.l	#AES_CONTROL,a0
+	move.w	#AES_WIND_SET,(a0)
+	move.w	#6,AES_CTRL_INT_IN(a0)
+	move.w	#1,AES_CTRL_INT_OUT(a0)
+	move.w	#0,AES_CTRL_ADDR_IN(a0)
+	move.w	#0,AES_CTRL_ADDR_OUT(a0)
+	
+	movea.l	#AES_INT_IN,a0
+	move.w	AES_WINDOW_HANDLE,(a0)	
+	move.w	#3,2(a0) ; WF_INFO
+	move.l	#STR_WINDOW_INFO,4(a0)
 	move.w	#0,8(a0)
 	move.w	#0,10(a0)
 	
@@ -239,6 +264,9 @@ STR_WINDOW_TITLE:
 	dc.b	"Window Title",0
 	even
 
+STR_WINDOW_INFO:
+	dc.b	"=INFO=INFO=INFO=",0
+	even
 ;--------------------------------------		
 	section bss
 ;--------------------------------------
