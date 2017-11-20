@@ -1,0 +1,44 @@
+#!/bin/bash
+
+PROJECT=$1
+ASM_EXT="S"
+OUTPUT_EXT="PRG"
+ASSEMBLER="vasmm68k-mot"
+FLAGS="-no-opt -Ftos -devpac"
+INCLUDE="-I./INCDIR/"
+
+echo "Building ${PROJECT}"
+
+cd ${PROJECT}
+
+if [[ $? != 0 ]]; then
+    echo "Unable to find project: ${PROJECT}"
+    exit 1
+fi
+    
+rm -rfv *.${OUTPUT_EXT}
+
+echo
+execline="${ASSEMBLER} ${INCLUDE} ${FLAGS} -o ${PROJECT}.${OUTPUT_EXT} ${PROJECT}.${ASM_EXT}"
+echo Executing ${execline}
+${execline}
+
+BUILD_RESULT=$?
+
+echo
+
+if [[ ${BUILD_RESULT} == 0 ]]; then
+
+    echo
+    echo "Build Succeeded! :D"
+    echo
+    echo "Running 'ls -la' on " ${PROJECT}.${OUTPUT_EXT}
+    ls -la ${PROJECT}.${OUTPUT_EXT}
+    echo "Running 'file' on " ${PROJECT}.${OUTPUT_EXT}
+    file ${PROJECT}.${OUTPUT_EXT}
+    echo
+    exit 0
+else
+    echo "Build Failed :("
+    exit 1
+fi
