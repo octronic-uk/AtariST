@@ -9,8 +9,11 @@
 ;		Header for an AES Application
 
 ;--------------------------------------
-; Your Application Here
+; Application Starts Here
 ;--------------------------------------
+
+	section text
+
 main:
 	jsr		AES_appl_init
 	jsr		AES_graf_handle	
@@ -19,11 +22,11 @@ main:
 	jsr		AES_wind_set_title
 	jsr		AES_wind_set_info
 	jsr		AES_wind_open
-	
-main_loop:
-	jmp		main_loop
+	jsr		read_key
 	
 main_exit:
+	jsr		AES_wind_close
+	jsr		AES_wind_delete
 	jsr		AES_appl_exit
 	move.w	#GEMDOS_PTERM0,-(sp)
 	trap	#TRAP_GEMDOS
@@ -146,70 +149,78 @@ AES_wind_create:
 	move.w	#AES_DEF_WINDOW_H,8(a0) 	; wi_crwh - Window Height
 	move.w	#0,AES_INT_OUT				; Set up int_out block
 	jsr		_call_AES
+	move.w	AES_INT_OUT,AES_WINDOW_HANDLE
 	rts
 
 AES_wind_open:
 	movea.l	#AES_CONTROL,a0
-	
 	move.w	#AES_WIND_OPEN,(a0)
-	
 	move.w	#5,AES_CTRL_INT_IN(a0)
 	move.w	#1,AES_CTRL_INT_OUT(a0)
-	
 	move.w	#0,AES_CTRL_ADDR_IN(a0)
 	move.w	#0,AES_CTRL_ADDR_OUT(a0)
-	
 	movea.l	#AES_INT_IN,a0
 	move.w	AES_WINDOW_HANDLE,(a0)
 	move.w	#AES_DEF_WINDOW_X,2(a0)
 	move.w	#AES_DEF_WINDOW_Y,4(a0)
 	move.w	#AES_DEF_WINDOW_W,6(a0)
 	move.w	#AES_DEF_WINDOW_H,8(a0)
-	
 	jsr		_call_AES
-	
 	rts
 
 AES_wind_set_title:
-
 	movea.l	#AES_CONTROL,a0
 	move.w	#AES_WIND_SET,(a0)
 	move.w	#6,AES_CTRL_INT_IN(a0)
 	move.w	#1,AES_CTRL_INT_OUT(a0)
 	move.w	#0,AES_CTRL_ADDR_IN(a0)
 	move.w	#0,AES_CTRL_ADDR_OUT(a0)
-	
 	movea.l	#AES_INT_IN,a0
 	move.w	AES_WINDOW_HANDLE,(a0)	
 	move.w	#2,2(a0) ; WF_NAME
 	move.l	#STR_WINDOW_TITLE,4(a0)
 	move.w	#0,8(a0)
 	move.w	#0,10(a0)
-	
 	jsr		_call_AES
-	
 	rts
 	
 AES_wind_set_info:
-
 	movea.l	#AES_CONTROL,a0
 	move.w	#AES_WIND_SET,(a0)
 	move.w	#6,AES_CTRL_INT_IN(a0)
 	move.w	#1,AES_CTRL_INT_OUT(a0)
 	move.w	#0,AES_CTRL_ADDR_IN(a0)
 	move.w	#0,AES_CTRL_ADDR_OUT(a0)
-	
 	movea.l	#AES_INT_IN,a0
 	move.w	AES_WINDOW_HANDLE,(a0)	
 	move.w	#3,2(a0) ; WF_INFO
 	move.l	#STR_WINDOW_INFO,4(a0)
 	move.w	#0,8(a0)
 	move.w	#0,10(a0)
-	
 	jsr		_call_AES
-	
 	rts
 
+AES_wind_close:
+	movea.l	#AES_CONTROL,a0
+	move.w	#AES_WIND_CLOSE,(a0)
+	move.w	#1,AES_CTRL_INT_IN(a0)
+	move.w	#1,AES_CTRL_INT_OUT(a0)
+	move.w	#0,AES_CTRL_ADDR_IN(a0)
+	move.w	#0,AES_CTRL_ADDR_OUT(a0)
+	move.w	AES_WINDOW_HANDLE,AES_INT_IN
+	jsr		_call_AES
+	rts
+	
+AES_wind_delete:
+	movea.l	#AES_CONTROL,a0
+	move.w	#AES_WIND_DELETE,(a0)
+	move.w	#1,AES_CTRL_INT_IN(a0)
+	move.w	#1,AES_CTRL_INT_OUT(a0)
+	move.w	#0,AES_CTRL_ADDR_IN(a0)
+	move.w	#0,AES_CTRL_ADDR_OUT(a0)
+	move.w	AES_WINDOW_HANDLE,AES_INT_IN
+	jsr		_call_AES
+	rts
 ;--------------------------------------
 ; OS Call Routines
 ;--------------------------------------
@@ -265,8 +276,9 @@ STR_WINDOW_TITLE:
 	even
 
 STR_WINDOW_INFO:
-	dc.b	"=INFO=INFO=INFO=",0
+	dc.b	"Window Information",0
 	even
+
 ;--------------------------------------		
 	section bss
 ;--------------------------------------
@@ -280,20 +292,14 @@ AES_ADDR_IN:			ds.l	2
 AES_INT_OUT:			ds.w	7
 AES_ADDR_OUT:			ds.l	1
 
-	even
-
 AES_PHYS_HANDLE:		ds.w	1
 AES_BOX_W:				ds.w	1
 AES_BOX_H:				ds.w	1
 AES_CHAR_W:				ds.w	1
 AES_CHAR_H:				ds.w	1
-
-	even
 	
 AES_WINDOW_HANDLE		ds.w	1
 AES_WIND_CREATE_RESULT:	ds.w	1	
-
-	even
 
 ; VDI Other
 
@@ -305,15 +311,11 @@ VDI_WORK_IN:			ds.w	12
 VDI_WORK_OUT:			ds.w	57
 VDI_HANDLE:				ds.w	1
 
-	even
-
 VDI_CONTROL:			ds.w	12
 VDI_PTS_IN:				ds.w	128
 VDI_PTS_OUT:			ds.w	128
 VDI_INT_IN:				ds.w	128
 VDI_INT_OUT:			ds.w	128
-
-	even
 
 ;--------------------------------------
 ; AES Constants
@@ -326,6 +328,9 @@ AES_GRAF_HANDLE			EQU	77
 AES_WIND_CREATE			EQU	100
 AES_WIND_OPEN			EQU 101
 AES_WIND_SET			EQU	105
+AES_WIND_CLOSE			EQU	102
+AES_WIND_DELETE			EQU	103
+
 ; Global Array Offests
 
 AES_AP_VERSION 			EQU 0
@@ -352,7 +357,7 @@ AES_DEF_WINDOW_X 		EQU 20
 AES_DEF_WINDOW_Y 		EQU 20
 AES_DEF_WINDOW_W		EQU 200
 AES_DEF_WINDOW_H		EQU 200
-AES_DEF_WINDOW_FLAGS	EQU $3E
+AES_DEF_WINDOW_FLAGS	EQU $3F
 
 ;--------------------------------------
 ; VDI Constants
