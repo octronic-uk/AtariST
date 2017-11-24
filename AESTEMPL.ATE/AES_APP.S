@@ -16,8 +16,9 @@
 
 main:
 	jsr		AES_appl_init
-	jsr		AES_graf_handle	
-	jsr		VDI_open_v_ws
+	jsr		AES_graf_handle
+	jsr		VDI_get_screen_res	
+	jsr		VDI_opnvwk
 	jsr		AES_wind_create
 	jsr		AES_wind_set_title
 	jsr		AES_wind_set_info
@@ -58,6 +59,8 @@ main_exit:
 	jsr		AES_wind_delete
 	jsr		VDI_close_v_ws
 	jsr		AES_appl_exit
+
+main_bail:
 	move.w	#GEMDOS_PTERM0,-(sp)
 	trap	#TRAP_GEMDOS
 	
@@ -65,32 +68,55 @@ main_exit:
 ;--------------------------------------
 ; GEM/VDI Library Functions
 ;--------------------------------------
-VDI_open_v_ws:
+VDI_get_screen_res:
 	move.w	#XBIOS_GETRES,-(sp)		; Call XBIOS to get resolution
 	trap	#TRAP_XBIOS
 	addq.l	#2,sp
-	addq.w	#2,d0					; Add 2 to correct res. Just cos?
-	move.w	d0,VDI_SCREEN_DEVICE
-	; Setup VDI work_in
-	movea.l	#VDI_WORK_IN,a0			; VDI Input block in a0
-	move.w	VDI_SCREEN_DEVICE,(a0)	; Move into VDI Input Args
-	move.w	#1,2(a0)
-	move.w	#1,4(a0)
-	move.w	#1,6(a0)
-	move.w	#1,8(a0)
-	move.w	#2,10(a0)				; Select raster coordinates mode
-	; Setup VDI control block
-	movea.l	#VDI_CONTROL,a0
-	move.w	#VDI_OPNVWK,(a0)		; Set Opcode
-	move.w	#0,VDI_CTRL_PTS_IN(a0)	; No pts in
-	move.w	#0,VDI_CTRL_INT_IN(a0)	; no ints in
-	move.w	VDI_SCREEN_DEVICE,VDI_CTRL_DEV_HANDLE(a0)
-	move.l	#VDI_WORK_IN,14(a0)
-	move.l	AES_PHYS_HANDLE,18(a0)
-	move.l	#VDI_WORK_OUT,22(a0)	
-	jsr		_call_VDI
+	addq.w	#2,d0					; Add 2 to correct res
+	move.w	d0,SCREEN_RES			; Store screen res
 	rts
+	
+VDI_opnvwk:
 
+	movea.l	#VDI_CONTROL,a0
+	move.w	#VDI_OPNVWK,(a0)
+	move.w	#11,VDI_CTRL_INT_IN(a0)
+	move.w	#0,VDI_CTRL_INT_OUT(a0)
+	move.w	#0,VDI_CTRL_PTS_IN(a0)
+	move.w	#0,VDI_CTRL_PTS_OUT(a0)
+	move.w	AES_PHYS_HANDLE,12(a0)
+	
+	movea.l	#VDI_INT_IN+2,a0
+	
+	move.w	#8,d0
+_VDI_opnvwk_int_in_init_loop:
+	move.w	#1,(a0)+
+	dbra	d0,_VDI_opnvwk_int_in_init_loop
+	
+	movea.l	#VDI_INT_IN,a0
+	move.w	SCREEN_RES,(a0)
+	move.w	#2,20(a0)				; Raster Coordinates
+	
+	jsr		_call_VDI
+	
+	move.w	VDI_CONTROL+12,VDI_WK_HANDLE
+	beq		_VDI_openvwk_error
+	rts
+	
+_VDI_openvwk_error:
+	
+	pea		STR_VDI_OPNVWK_ERROR	
+	move.w	#GEMDOS_CCONWS,-(sp)
+	trap	#TRAP_GEMDOS
+	addq.l	#6,sp
+	
+	; Wait for Keypres
+	move.w	#GEMDOS_CCONIN,-(sp)
+	trap	#TRAP_GEMDOS
+	addq.l	#2,sp
+	
+	jmp		main_bail
+	
 VDI_close_v_ws:
 	movea.l	#VDI_CONTROL,a0
 	move.w	#101,(a0)				; v_clsvwk opcode
@@ -99,33 +125,7 @@ VDI_close_v_ws:
 	jsr		_call_VDI
 	rts
 
-VDI_Debug:	
-	clr.l	d0		 				; Store strlen in d0
-	movea.l	4(sp),a0 				; Get string address
-	movea.l	#VDI_INT_IN,a1			; Copy string into int_in
-
-_VDI_Debug_strlen:
-	addq.l	#1,a1
-	move.b	(a0)+,(a1)+
-	addq.l	#1,d0 					; strlen
-	cmpi.b	#0,(a0)					; Is next char \0 ?
-	beq		_VDI_Debug_strlen_done
-	jmp		_VDI_Debug_strlen
-
-_VDI_Debug_strlen_done:	
-	movea.l	#VDI_CONTROL,a0
-	move.w	#VDI_CURTEXT,(a0)
-	move.w	#0,VDI_CTRL_PTS_IN(a0)
-	move.w	#0,VDI_CTRL_PTS_OUT(a0)
-	subq.w	#1,d0
-	move.w	d0,VDI_CTRL_INT_IN(a0)	; String Length
-	move.w	#0,VDI_CTRL_INT_OUT(a0)
-	move.w	#VDI_CURTEXT_SUB,VDI_CTRL_SUB_FUNC(a0)
-	move.w	VDI_SCREEN_DEVICE,VDI_CTRL_DEV_HANDLE(a0)
-	jsr		_call_VDI
-	rts
-
-VDI_fill_bg_white:
+VDI_set_bg_white:
 	; Set colour to white
 	movea.l	#VDI_CONTROL,a0
 	move.w	#25,(a0)				; vsf_color
@@ -133,25 +133,29 @@ VDI_fill_bg_white:
 	move.w	#0,VDI_CTRL_PTS_OUT(a0)
 	move.w	#1,VDI_CTRL_INT_IN(a0)
 	move.w	#1,VDI_CTRL_INT_OUT(a0)
-	move.w	VDI_SCREEN_DEVICE,VDI_CTRL_DEV_HANDLE(a0)
+	move.w	VDI_WK_HANDLE,VDI_CTRL_DEV_HANDLE(a0)
 	move.w	#0,VDI_INT_IN
-	jsr _call_VDI
+	jsr 	_call_VDI
+	rts
 	
+VDI_fill_bg_rect:
 	; Make call to vr_recfl
 	movea.l	#VDI_CONTROL,a0
+	
 	move.w	#114,(a0)				; vr_recfl (rectangle fill)
 	move.w	#2,VDI_CTRL_PTS_IN(a0)
 	move.w	#0,VDI_CTRL_PTS_OUT(a0)
 	move.w	#0,VDI_CTRL_INT_IN(a0)
 	move.w	#0,VDI_CTRL_INT_OUT(a0)
-	move.w	VDI_SCREEN_DEVICE,VDI_CTRL_DEV_HANDLE(a0)
-	movea.l	#VDI_PTS_IN,a0
-	move.w	WORK_X,(a0)				; Draw From	X,	Y
-	move.w	WORK_Y,2(a0)			; Draw To 	X+W,Y+H
-	move.w	WORK_X,d0
+	move.w	VDI_WK_HANDLE,VDI_CTRL_DEV_HANDLE(a0)
+	
+	movea.l	#VDI_PTS_IN,a0	
+	move.w	WORK_X,(a0)		; X
+	move.w	WORK_Y,2(a0)	; Y
+	move.w	WORK_X,d0		; W
 	add.w	WORK_W,d0
 	move.w	d0,4(a0)
-	move.w	WORK_Y,d0
+	move.w	WORK_Y,d0		; H
 	add.w	WORK_H,d0
 	move.w	d0,6(a0)	
 	jsr		_call_VDI
@@ -169,7 +173,18 @@ AES_appl_init:
 	move.w	#0,AES_CTRL_ADDR_IN(a0)
 	move.w	#0,AES_CTRL_ADDR_OUT(a0)
 	jsr		_call_AES
+	
+	move.w	AES_GLOBAL+4,APP_ID
+	cmpi.w	#$FFFF,APP_ID
+	beq 	_AES_appl_init_error
 	rts
+
+_AES_appl_init_error:
+	pea		STR_AES_APPL_INIT_ERROR
+	move.w	#GEMDOS_CCONWS,-(sp)
+	trap	#TRAP_GEMDOS
+	addq.l	#6,sp
+	jmp		main_bail
 
 AES_appl_exit:
 	movea.l	#AES_CONTROL,a0
@@ -183,57 +198,78 @@ AES_appl_exit:
 	
 AES_event_messag:
 	movea.l	#AES_CONTROL,a0
+	
 	move.w	#23,(a0)		; event_messag
 	move.w	#0,AES_CTRL_INT_IN(a0)
 	move.w	#1,AES_CTRL_INT_OUT(a0)
 	move.w	#1,AES_CTRL_ADDR_IN(a0)
 	move.w	#0,AES_CTRL_ADDR_OUT(a0)
+	
 	move.l	#AES_MESSAGE,AES_ADDR_IN
+	
 	jsr		_call_AES
+	
 	movea.l	#AES_CONTROL,a0
 	move.w	#0,AES_CTRL_ADDR_IN(a0)
+	
 	rts
 
 AES_event_wm_sized:
 	movea.l	#AES_CONTROL,a0
+	
 	move.w	#AES_WIND_SET,(a0)
 	move.w	#6,AES_CTRL_INT_IN(a0)
+	
 	movea.l	#AES_INT_IN,a0
 	movea.l	#AES_MESSAGE,a1
+	
 	move.w	6(a1),(a0)		; window handle
 	move.w	#5,2(a0)		;set size subcommand
+	
 	move.w	8(a1),4(a0)
 	move.w	10(a1),6(a0)
 	move.w	12(a1),8(a0)
 	move.w	14(a1),10(a0)
+	
 	jsr		_call_AES
+	
 	rts
 
 AES_event_wm_moved:
 	movea.l	#AES_CONTROL,a0
+	
 	move.w	#AES_WIND_SET,(a0)
 	move.w	#6,AES_CTRL_INT_IN(a0)
+	
 	movea.l	#AES_INT_IN,a0
 	movea.l	#AES_MESSAGE,a1
+	
 	move.w	6(a1),(a0)		; window handle
 	move.w	#5,2(a0)		;set size subcommand
+	
 	move.w	8(a1),4(a0)
 	move.w	10(a1),6(a0)
 	move.w	12(a1),8(a0)
 	move.w	14(a1),10(a0)
+		
 	jsr		_call_AES
+	
 	rts
 
 AES_event_wm_redraw:	
 	; Lock AES
 	jsr		AES_graf_mouse_hide
 	jsr		AES_wind_update_begin
+	
 	; Perform Refresh
 	jsr		AES_wind_get_work_xywh
-	jsr		VDI_fill_bg_white
+	jsr		VDI_set_bg_white
+	jsr		VDI_fill_bg_rect
+	
 	; Unlock AES
 	jsr		AES_wind_update_end
 	jsr		AES_graf_mouse_show
+	
 	rts
 
 AES_wind_update_begin:
@@ -247,15 +283,15 @@ AES_wind_update_begin:
 	
 AES_wind_update_end:
 	movea.l	#AES_CONTROL,a0
-	move.w	#107,(a0)
+	move.w	#107,(a0)				; wind_update
 	move.w	#1,AES_CTRL_INT_IN(a0)
 	move.w	#1,AES_CTRL_INT_OUT(a0)
-	move.w	#0,AES_INT_IN
+	move.w	#0,AES_INT_IN			; END_UPDATE
 	jsr		_call_AES
 	rts
 
 AES_graf_mouse_hide:
-	movea.l	#AES_CONTROL,a0				; Setup control block
+	movea.l	#AES_CONTROL,a0
 	move.w	#AES_GRAF_MOUSE,(a0)
 	move.w	#1,AES_CTRL_INT_IN(a0)
 	move.w	#1,AES_CTRL_INT_OUT(a0)
@@ -264,7 +300,7 @@ AES_graf_mouse_hide:
 	rts
 	
 AES_graf_mouse_show:
-	movea.l	#AES_CONTROL,a0				; Setup control block
+	movea.l	#AES_CONTROL,a0
 	move.w	#AES_GRAF_MOUSE,(a0)
 	move.w	#1,AES_CTRL_INT_IN(a0)
 	move.w	#1,AES_CTRL_INT_OUT(a0)
@@ -273,14 +309,14 @@ AES_graf_mouse_show:
 	rts
 
 AES_graf_handle:
-	movea.l	#AES_CONTROL,a0				; Setup control block
+	movea.l	#AES_CONTROL,a0	
 	move.w	#AES_GRAF_HANDLE,(a0)
 	move.w	#0,AES_CTRL_INT_IN(a0)
 	move.w	#5,AES_CTRL_INT_OUT(a0)
 	move.w	#0,AES_CTRL_ADDR_IN(a0)
 	move.w	#0,AES_CTRL_ADDR_OUT(a0)
 	jsr		_call_AES
-	movea.l	#AES_INT_OUT,a0				; Store return values
+	movea.l	#AES_INT_OUT,a0	
 	move.w	(a0),AES_PHYS_HANDLE	
 	move.w	2(a0),AES_CHAR_W
 	move.w	4(a0),AES_CHAR_H
@@ -329,7 +365,6 @@ AES_wind_set_title:
 	move.w	#1,AES_CTRL_INT_OUT(a0)
 	move.w	#0,AES_CTRL_ADDR_IN(a0)
 	move.w	#0,AES_CTRL_ADDR_OUT(a0)
-	
 	movea.l	#AES_INT_IN,a0
 	move.w	AES_WINDOW_HANDLE,(a0)	
 	move.w	#2,2(a0) ; WF_NAME
@@ -346,7 +381,6 @@ AES_wind_set_info:
 	move.w	#1,AES_CTRL_INT_OUT(a0)
 	move.w	#0,AES_CTRL_ADDR_IN(a0)
 	move.w	#0,AES_CTRL_ADDR_OUT(a0)
-	
 	movea.l	#AES_INT_IN,a0
 	move.w	AES_WINDOW_HANDLE,(a0)	
 	move.w	#3,2(a0) ; WF_INFO
@@ -385,10 +419,8 @@ AES_wind_get_work_xywh:
 	move.w	#5,AES_CTRL_INT_OUT(a0)
 	move.w	#0,AES_CTRL_ADDR_IN(a0)
 	move.w	#0,AES_CTRL_ADDR_OUT(a0)
-	
 	move.w	AES_WINDOW_HANDLE,AES_INT_IN
 	move.w	#4,AES_INT_IN+2			; WF_WORKXYWH
-	
 	jsr		_call_AES
 	
 	; Save Results
@@ -396,7 +428,6 @@ AES_wind_get_work_xywh:
 	move.w	AES_INT_OUT+4,WORK_Y
 	move.w	AES_INT_OUT+6,WORK_W
 	move.w	AES_INT_OUT+8,WORK_H	
-	
 	rts
 	
 ;--------------------------------------
@@ -429,7 +460,6 @@ AES_PARAM_BLOCK:
 	dc.l	AES_ADDR_IN
 	dc.l	AES_ADDR_OUT
 
-
 ; VDI Parameter Vector
 
 VDI_PARAM_BLOCK:
@@ -443,23 +473,28 @@ VDI_PARAM_BLOCK:
 
 STR_WIND_CREATE_FAIL: 	
 	dc.b	"Failed to create window",0
-	even
 	
 STR_WIND_CREATE_SUCC:	
 	dc.b	"Created window!",0
-	even
 	
 STR_WINDOW_TITLE:
 	dc.b	"Window Title",0
-	even
 
 STR_WINDOW_INFO:
 	dc.b	"Window Information",0
-	even
+
+STR_AES_APPL_INIT_ERROR:
+	dc.b	"Error opening virtual workstation",0
+
+STR_VDI_OPNVWK_ERROR:
+	dc.b	"Error Initialising Application",0
 
 ;--------------------------------------		
 	section bss
 ;--------------------------------------
+
+
+APP_ID:					ds.w	1
 
 ; AES Arrays
 
@@ -490,13 +525,13 @@ WORK_H:					ds.w	1
 
 ; VDI Other
 
-VDI_SCREEN_DEVICE:		ds.w	1
+SCREEN_RES:				ds.w	1
 
 ; VDI Arrays
 
 VDI_WORK_IN:			ds.w	12
 VDI_WORK_OUT:			ds.w	57
-VDI_HANDLE:				ds.w	1
+VDI_WK_HANDLE:			ds.w	1
 
 VDI_CONTROL:			ds.w	12
 VDI_PTS_IN:				ds.w	128
@@ -508,82 +543,82 @@ VDI_INT_OUT:			ds.w	128
 ; AES Constants
 ;--------------------------------------
 
-AES_ID					EQU	200
-AES_APPL_INIT			EQU 10
-AES_APPL_EXIT			EQU	19
-AES_GRAF_HANDLE			EQU	77
-AES_GRAF_MOUSE			EQU	78
-AES_WIND_CREATE			EQU	100
-AES_WIND_OPEN			EQU 101
-AES_WIND_CLOSE			EQU	102
-AES_WIND_DELETE			EQU	103
-AES_WIND_GET			EQU	104
-AES_WIND_SET			EQU	105
+AES_ID					EQU		200
+AES_APPL_INIT			EQU 	10
+AES_APPL_EXIT			EQU		19
+AES_GRAF_HANDLE			EQU		77
+AES_GRAF_MOUSE			EQU		78
+AES_WIND_CREATE			EQU		100
+AES_WIND_OPEN			EQU 	101
+AES_WIND_CLOSE			EQU		102
+AES_WIND_DELETE			EQU		103
+AES_WIND_GET			EQU		104
+AES_WIND_SET			EQU		105
 
 ; Global Array Offests
 
-AES_AP_VERSION 			EQU 0
-AES_AP_COUNT			EQU 2
-AES_AP_ID				EQU 4
-AES_AP_PRIVATE			EQU 6
-AES_AP_PTREE			EQU	10
-AES_AP_1RESV			EQU 14
-AES_AP_2RESV			EQU	18
-AES_AP_3RESV			EQU	22
-AES_AP_4RESV			EQU	26
+AES_AP_VERSION 			EQU 	0
+AES_AP_COUNT			EQU 	2
+AES_AP_ID				EQU 	4
+AES_AP_PRIVATE			EQU 	6
+AES_AP_PTREE			EQU		10
+AES_AP_1RESV			EQU 	14
+AES_AP_2RESV			EQU		18
+AES_AP_3RESV			EQU		22
+AES_AP_4RESV			EQU		26
 
 ; Control Array Offsets
 
-AES_CTRL_OPCODE			EQU	0
-AES_CTRL_INT_IN			EQU	2
-AES_CTRL_INT_OUT		EQU	4
-AES_CTRL_ADDR_IN		EQU	6
-AES_CTRL_ADDR_OUT		EQU	8
+AES_CTRL_OPCODE			EQU		0
+AES_CTRL_INT_IN			EQU		2
+AES_CTRL_INT_OUT		EQU		4
+AES_CTRL_ADDR_IN		EQU		6
+AES_CTRL_ADDR_OUT		EQU		8
 
 ; Default Window Args
 
-AES_DEF_WINDOW_X 		EQU 20
-AES_DEF_WINDOW_Y 		EQU 20
-AES_DEF_WINDOW_W		EQU 200
-AES_DEF_WINDOW_H		EQU 200
-AES_DEF_WINDOW_FLAGS	EQU $2F
+AES_DEF_WINDOW_X 		EQU 	20
+AES_DEF_WINDOW_Y 		EQU 	20
+AES_DEF_WINDOW_W		EQU 	200
+AES_DEF_WINDOW_H		EQU 	200
+AES_DEF_WINDOW_FLAGS	EQU 	$2F
 
 ;--------------------------------------
 ; VDI Constants
 ;--------------------------------------
 
-VDI_CURTEXT				EQU	5
-VDI_CURTEXT_SUB			EQU	12
-VDI_OPNVWK				EQU	100
-VDI_OPCODE				EQU	115
+VDI_CURTEXT				EQU		5
+VDI_CURTEXT_SUB			EQU		12
+VDI_OPNVWK				EQU		100
+VDI_OPCODE				EQU		115
 
 ; VDI contrl offsets
 
-VDI_CTRL_OPCODE			EQU	0
-VDI_CTRL_PTS_IN			EQU 2
-VDI_CTRL_PTS_OUT		EQU	4
-VDI_CTRL_INT_IN			EQU	6
-VDI_CTRL_INT_OUT		EQU	8
-VDI_CTRL_SUB_FUNC		EQU	10
-VDI_CTRL_DEV_HANDLE		EQU	12
+VDI_CTRL_OPCODE			EQU		0
+VDI_CTRL_PTS_IN			EQU 	2
+VDI_CTRL_PTS_OUT		EQU		4
+VDI_CTRL_INT_IN			EQU		6
+VDI_CTRL_INT_OUT		EQU		8
+VDI_CTRL_SUB_FUNC		EQU		10
+VDI_CTRL_DEV_HANDLE		EQU		12
 
 ;--------------------------------------
 ; Events
 ;--------------------------------------
 
-EVENT_MN_SELECTED	EQU 10
-EVENT_WM_REDRAW		EQU	20
-EVENT_WM_TOPPED		EQU	21
-EVENT_WM_CLOSED		EQU	22
-EVENT_WM_FULLED		EQU	23
-EVENT_WM_ARROWED	EQU	24
-EVENT_WM_HSLID		EQU	25
-EVENT_WM_VSLID		EQU	26
-EVENT_WM_SIZED		EQU	27
-EVENT_WM_MOVED		EQU	28
-EVENT_WM_NEWTOP		EQU	29
-EVENT_AC_OPEN		EQU	40
-EVENT_AC_CLOSE		EQU	41
+EVENT_MN_SELECTED		EQU 	10
+EVENT_WM_REDRAW			EQU		20
+EVENT_WM_TOPPED			EQU		21
+EVENT_WM_CLOSED			EQU		22
+EVENT_WM_FULLED			EQU		23
+EVENT_WM_ARROWED		EQU		24
+EVENT_WM_HSLID			EQU		25
+EVENT_WM_VSLID			EQU		26
+EVENT_WM_SIZED			EQU		27
+EVENT_WM_MOVED			EQU		28
+EVENT_WM_NEWTOP			EQU		29
+EVENT_AC_OPEN			EQU		40
+EVENT_AC_CLOSE			EQU		41
 
 ;--------------------------------------
 ;	Includes
