@@ -7,7 +7,6 @@
 ;
 ;   ASCII.S 
 ;       Ascii Constants
-
 ASCII_NUL           equ	$00 ;   NULL
 ASCII_SOH           equ	$01 ;   Start of Heading
 ASCII_STX           equ	$02 ;   Start of Text
@@ -136,3 +135,20 @@ ASCII_V_BAR         equ	$7c
 ASCII_CURLY_R       equ	$7d
 ASCII_TILDE         equ	$7e
 ASCII_DEL           equ	$7f
+
+	section text
+
+ASCII_itoa:
+	movea.l	4(sp),a1	;	Output Buffer Pointer
+	movea.l	8(sp),a0	;	Input Pointer
+	move.b	#ASCII_CR,(a1)+
+	move.b	#ASCII_0,(a1)+
+	move.b	#ASCII_x,(a1)+
+	move.w	#3,d0
+_ASCII_itoa_next:
+	move.b	(a0)+,(a1)
+	add.b	#ASCII_0,(a1)+
+	dbra	d0,_ASCII_itoa_next
+_ASCII_itoa_done:
+	move.b	#0,(a1)
+	rts
