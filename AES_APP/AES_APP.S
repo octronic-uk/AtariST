@@ -19,6 +19,7 @@ main:
 	jsr		AES_graf_handle
 	jsr		VDI_get_screen_res	
 	jsr		VDI_opnvwk
+    jsr     AES_wind_get_desk_xywh
 	jsr		AES_wind_create
 	jsr		AES_wind_set_title
 	jsr		AES_wind_set_info
@@ -49,9 +50,9 @@ main_check_fulled:
 	move.w	AES_MESSAGE,d1
 	cmpi.w	#EVENT_WM_FULLED,d1
 	bne		main_check_close
-	jsr		AES_wind_get_prev_xywh
 	jsr		AES_wind_get_full_xywh
 	jsr		AES_event_wm_fulled
+	jsr		AES_wind_get_prev_xywh
 	
 main_check_close:	
 	move.w	AES_MESSAGE,d1
@@ -71,11 +72,9 @@ main_exit:
 	rts
 	
 ZERO_ARRAY:
-	
 	move.w	4(sp),d0	; size
 	movea.l	6(sp),a0	; pointer
 	subq.w	#1,d0		; size-1
-	
 _ZERO_ARRAY_next:
 	move.w	#0,(a0)+
 	dbra	d0,_ZERO_ARRAY_next
@@ -83,7 +82,6 @@ _ZERO_ARRAY_next:
 
 
 FATAL_ERROR:
-
 	move.l	4(sp),-(sp)	
 	move.w	#GEMDOS_CCONWS,-(sp)
 	trap	#TRAP_GEMDOS
@@ -96,7 +94,6 @@ FATAL_ERROR:
 
 
 DEBUG:
-
 	move.l	4(sp),-(sp)	
 	move.w	#GEMDOS_CCONWS,-(sp)
 	trap	#TRAP_GEMDOS
@@ -112,15 +109,13 @@ DEBUG:
 ;--------------------------------------
 
 VDI_get_screen_res:
-
-	move.w	#XBIOS_GETRES,-(sp)		; Call XBIOS to get resolution
+	move.w	#XBIOS_GETRES,-(sp)
 	trap	#TRAP_XBIOS
 	addq.l	#2,sp
 	addq.w	#2,d0					; Add 2 to correct res
-	move.w	d0,SCREEN_RES			; Store screen res
+	move.w	d0,SCREEN_RES
 	beq		_VDI_get_screen_res_error
 	rts
-	
 _VDI_get_screen_res_error:
 	pea		SCREEN_RES
 	pea		STR_BUFFER
@@ -132,45 +127,35 @@ _VDI_get_screen_res_error:
 	rts
 	
 VDI_opnvwk:
-	pea		VDI_CONTROL			; Zero VDI_CONTROL
+	pea		VDI_CONTROL
 	move.w	#VDI_CONTROL_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-		
-	lea		VDI_CONTROL,a0
-	move.w	#VDI_OPNVWK,(a0)
-	move.w	#11,VDI_CTRL_INT_IN(a0)
-	move.w	#0,VDI_CTRL_PTS_IN(a0)
-	move.w	AES_PHYS_HANDLE,12(a0)
-	
+	move.w	#VDI_OPNVWK,VDI_CONTROL
+	move.w	#11,VDI_CONTROL+VDI_CTRL_INT_IN
+	move.w	#0,VDI_CONTROL+VDI_CTRL_PTS_IN
+	move.w	AES_PHYS_HANDLE,VDI_CONTROL+VDI_CTRL_DEV_HANDLE
 	pea		VDI_INT_IN
 	move.w	#VDI_ARRAY_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	
 	pea		VDI_INT_IN
 	move.w	#VDI_ARRAY_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	
 	lea		VDI_INT_IN,a0
 	move.w	#9,d0
 _VDI_opnvwk_int_in_init_loop:
 	move.w	#1,(a0)+
 	dbra	d0,_VDI_opnvwk_int_in_init_loop
-	
 	move.w	SCREEN_RES,VDI_INT_IN
-	move.w	#2,VDI_INT_IN+20   ; Raster Coordinates
+	move.w	#RASTER_COORDS,VDI_INT_IN+20
 	jsr		_call_VDI
-	
-	move.w	VDI_CONTROL+12,VDI_WK_HANDLE
+	move.w	VDI_CONTROL+VDI_CTRL_DEV_HANDLE,VDI_WK_HANDLE
 	cmpi.w	#0,VDI_WK_HANDLE
 	beq		_VDI_openvwk_error
-	
 	rts
-
 _VDI_openvwk_error:
-
 	pea		STR_VDI_OPNVWK_ERROR	
 	jsr 	DEBUG
 	addq.l	#4,sp
@@ -185,85 +170,65 @@ _VDI_openvwk_error:
 
 	
 VDI_clrwk:
-
 	pea 	VDI_CONTROL
 	move.w	#VDI_CONTROL_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	
-	move.w	#3,VDI_CONTROL
-	move.w	#0,VDI_CONTROL+2
-	move.w	#0,VDI_CONTROL+6
+	move.w	#VDI_CLRWK,VDI_CONTROL
+	move.w	#0,VDI_CONTROL+VDI_CTRL_PTS_IN
+	move.w	#0,VDI_CONTROL+VDI_CTRL_INT_IN
 	jsr		_call_VDI
 	rts
 
 	
 VDI_clsvwk:
-
 	pea 	VDI_CONTROL
 	move.w	#VDI_CONTROL_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	
-	lea		VDI_CONTROL,a0
-	move.w	#101,(a0)				; v_clsvwk opcode
-	move.w	#0,2(a0)
-	move.w	#0,6(a0)
+	move.w	#VDI_CLSWK,VDI_CONTROL
+	move.w	#0,VDI_CONTROL+VDI_CTRL_PTS_IN
+	move.w	#0,VDI_CONTROL+VDI_CTRL_INT_IN
 	jsr		_call_VDI
 	rts
 
 
 VDI_set_bg_white:
-
-	; Set colour to white
-	
 	pea 	VDI_CONTROL
 	move.w	#VDI_CONTROL_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	
-	lea		VDI_CONTROL,a0
-	move.w	#25,(a0)				; vsf_color
-	move.w	#0,VDI_CTRL_PTS_IN(a0)
-	move.w	#0,VDI_CTRL_PTS_OUT(a0)
-	move.w	#1,VDI_CTRL_INT_IN(a0)
-	move.w	#1,VDI_CTRL_INT_OUT(a0)
-	move.w	VDI_WK_HANDLE,VDI_CTRL_DEV_HANDLE(a0)
+	move.w	#VSF_COLOR,VDI_CONTROL
+	move.w	#0,VDI_CONTROL+VDI_CTRL_PTS_IN
+	move.w	#0,VDI_CONTROL+VDI_CTRL_PTS_OUT
+	move.w	#1,VDI_CONTROL+VDI_CTRL_INT_IN
+	move.w	#1,VDI_CONTROL+VDI_CTRL_INT_OUT
+	move.w	VDI_WK_HANDLE,VDI_CONTROL+VDI_CTRL_DEV_HANDLE
 	move.w	#0,VDI_INT_IN
-	
 	jsr 	_call_VDI
-	
 	rts
 
 	
 VDI_fill_bg_rect:
-	; Make call to vr_recfl
-	
 	pea 	VDI_CONTROL
 	move.w	#VDI_CONTROL_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	
-	lea		VDI_CONTROL,a0
-	move.w	#114,(a0)				; vr_recfl (rectangle fill)
-	move.w	#2,VDI_CTRL_PTS_IN(a0)
-	move.w	#0,VDI_CTRL_PTS_OUT(a0)
-	move.w	#0,VDI_CTRL_INT_IN(a0)
-	move.w	#0,VDI_CTRL_INT_OUT(a0)
-	move.w	VDI_WK_HANDLE,VDI_CTRL_DEV_HANDLE(a0)
-	
-	lea		VDI_PTS_IN,a0	
-	move.w	WORK_X,(a0)		; X
-	move.w	WORK_Y,2(a0)	; Y
-	move.w	WORK_X,d0		; W
+	move.w	#VR_RECFL,VDI_CONTROL
+	move.w	#2,VDI_CONTROL+VDI_CTRL_PTS_IN
+	move.w	#0,VDI_CONTROL+VDI_CTRL_PTS_OUT
+	move.w	#0,VDI_CONTROL+VDI_CTRL_INT_IN
+	move.w	#0,VDI_CONTROL+VDI_CTRL_INT_OUT
+	move.w	VDI_WK_HANDLE,VDI_CONTROL+VDI_CTRL_DEV_HANDLE
+	move.w	WORK_X,VDI_PTS_IN
+	move.w	WORK_Y,VDI_PTS_IN+2
+	move.w	WORK_X,d0
 	add.w	WORK_W,d0
-	move.w	d0,4(a0)
-	move.w	WORK_Y,d0		; H
+	move.w	d0,VDI_PTS_IN+4
+	move.w	WORK_Y,d0		
 	add.w	WORK_H,d0
-	move.w	d0,6(a0)	
-	
+	move.w	d0,VDI_PTS_IN+6
 	jsr		_call_VDI
-	
 	rts
 
 
@@ -272,130 +237,116 @@ VDI_fill_bg_rect:
 ;--------------------------------------
 
 AES_appl_init:
-
 	pea		AES_CONTROL
 	move.w	#AES_CONTROL_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-
-	lea		AES_CONTROL,a0
-	move.w	#AES_APPL_INIT,(a0)
-	move.w	#0,AES_CTRL_INT_IN(a0)
-	move.w	#1,AES_CTRL_INT_OUT(a0)
-	move.w	#0,AES_CTRL_ADDR_IN(a0)
-	move.w	#0,AES_CTRL_ADDR_OUT(a0)
-	
+	move.w	#AES_APPL_INIT,AES_CONTROL
+	move.w	#0,AES_CONTROL+AES_CTRL_INT_IN
+	move.w	#1,AES_CONTROL+AES_CTRL_INT_OUT
+	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_IN
+	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_OUT
 	pea		AES_GLOBAL
 	move.w	#AES_GLOBAL_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	
 	pea		AES_INT_OUT
 	move.w	#AES_INT_OUT_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-
 	jsr		_call_AES
-	
 	move.w	AES_INT_OUT,APP_ID
 	cmpi.w	#$FFFF,APP_ID
 	beq 	_AES_appl_init_error
-	
 	rts
 _AES_appl_init_error:
 	pea		STR_AES_APPL_INIT_ERROR
 	jsr		FATAL_ERROR
 	addq.l	#4,sp
 
+
 AES_appl_exit:
-	
 	pea 	AES_CONTROL
 	move.w	#AES_CONTROL_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	
-	lea		AES_CONTROL,a0
-	move.w	#AES_APPL_EXIT,(a0)
-	move.w	#0,AES_CTRL_INT_IN(a0)
-	move.w	#1,AES_CTRL_INT_OUT(a0)
-	move.w	#0,AES_CTRL_ADDR_IN(a0)
-	move.w	#0,AES_CTRL_ADDR_OUT(a0)
+	move.w	#AES_APPL_EXIT,AES_CONTROL
+	move.w	#0,AES_CONTROL+AES_CTRL_INT_IN
+	move.w	#1,AES_CONTROL+AES_CTRL_INT_OUT
+	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_IN
+	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_OUT
 	jsr		_call_AES
 	rts
 	
+
 AES_event_messag:
-	
 	pea 	AES_CONTROL
 	move.w	#AES_CONTROL_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	
-	lea		AES_CONTROL,a0
-	move.w	#23,(a0)		; event_messag
-	move.w	#0,AES_CTRL_INT_IN(a0)
-	move.w	#1,AES_CTRL_INT_OUT(a0)
-	move.w	#1,AES_CTRL_ADDR_IN(a0)
-	move.w	#0,AES_CTRL_ADDR_OUT(a0)
+	move.w	#EVENT_MESSAG,AES_CONTROL
+	move.w	#0,AES_CONTROL+AES_CTRL_INT_IN
+	move.w	#1,AES_CONTROL+AES_CTRL_INT_OUT
+	move.w	#1,AES_CONTROL+AES_CTRL_ADDR_IN
+	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_OUT
 	move.l	#AES_MESSAGE,AES_ADDR_IN
-	
 	jsr		_call_AES
-	
-	lea		AES_CONTROL,a0
-	move.w	#0,AES_CTRL_ADDR_IN(a0)
+	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_IN
 	rts
+
 
 AES_event_wm_sized:
-
 	pea		AES_CONTROL
 	move.w	#AES_CONTROL_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-
-	lea		AES_CONTROL,a0
-	move.w	#AES_WIND_SET,(a0)
-	move.w	#6,AES_CTRL_INT_IN(a0)
-	
+	move.w	#AES_WIND_SET,AES_CONTROL
+	move.w	#6,AES_CONTROL+AES_CTRL_INT_IN
 	pea		AES_INT_IN
 	move.w	#AES_INT_IN_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	
-	lea		AES_INT_IN,a0
-	
-	lea		AES_MESSAGE,a1
-	move.w	6(a1),(a0)		; window handle
-	move.w	#5,2(a0)		; set size subcommand
-	move.w	8(a1),4(a0)
-	move.w	10(a1),6(a0)
-	move.w	12(a1),8(a0)
-	move.w	14(a1),10(a0)
+	move.w	AES_MESSAGE+6,AES_INT_IN
+	move.w	#WF_CURRXYWH,AES_INT_IN+2
+	move.w	AES_MESSAGE+8,AES_INT_IN+4
+	move.w	AES_MESSAGE+10,AES_INT_IN+6
+	move.w	AES_MESSAGE+12,AES_INT_IN+8
+	move.w	AES_MESSAGE+14,AES_INT_IN+10
 	jsr		_call_AES
 	rts
 	
+
 AES_event_wm_fulled:
 	pea		AES_CONTROL
 	move.w	#AES_CONTROL_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-
-	lea		AES_CONTROL,a0
-	move.w	#AES_WIND_SET,(a0)
-	move.w	#6,AES_CTRL_INT_IN(a0)
-	
+	move.w	#AES_WIND_SET,AES_CONTROL
+	move.w	#6,AES_CONTROL+AES_CTRL_INT_IN
 	pea		AES_INT_IN
 	move.w	#AES_INT_IN_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	
-	move.w	AES_MESSAGE+6,AES_INT_IN	; window handle
-	move.w	#WF_CURRXYWH,AES_INT_IN+2	; set size subcommand
-	move.w	FULL_Y,AES_INT_IN+4
-	move.w	FULL_H,AES_INT_IN+6
-	move.w	FULL_X,AES_INT_IN+8
-	move.w	FULL_W,AES_INT_IN+10
-	
+	move.w	AES_MESSAGE+6,AES_INT_IN
+	move.w	#WF_CURRXYWH,AES_INT_IN+2
+    
+    cmpi.w  #FALSE,IS_FULLED
+    bne     AES_event_wm_fulled_unfull
+
+	move.w	DESK_X,AES_INT_IN+4
+	move.w	DESK_Y,AES_INT_IN+6
+	move.w	DESK_W,AES_INT_IN+8
+	move.w	DESK_H,AES_INT_IN+10
+    move.w  #TRUE,IS_FULLED
+    jmp     AES_event_wm_fulled_apply
+AES_event_wm_fulled_unfull:
+    move.w	PREV_X,AES_INT_IN+4
+	move.w	PREV_Y,AES_INT_IN+6
+	move.w	PREV_W,AES_INT_IN+8
+	move.w	PREV_H,AES_INT_IN+10
+    move.w  #FALSE,IS_FULLED
+AES_event_wm_fulled_apply:
 	jsr		_call_AES
-	
 	rts
 
 
@@ -404,35 +355,29 @@ AES_event_wm_moved:
 	move.w	#AES_CONTROL_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	
-	lea		AES_CONTROL,a0
-	move.w	#AES_WIND_SET,(a0)
-	move.w	#6,AES_CTRL_INT_IN(a0)
-	
+	move.w	#AES_WIND_SET,AES_CONTROL
+	move.w	#6,AES_CONTROL+AES_CTRL_INT_IN
 	pea		AES_INT_IN
 	move.w	#AES_INT_IN_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	
-	lea	AES_INT_IN,a0
-	lea AES_MESSAGE,a1
-	move.w	6(a1),(a0)		; window handle
-	move.w	#5,2(a0)		;set size subcommand
-	move.w	8(a1),4(a0)
-	move.w	10(a1),6(a0)
-	move.w	12(a1),8(a0)
-	move.w	14(a1),10(a0)
+	move.w	AES_MESSAGE+6,AES_INT_IN
+	move.w	#WF_CURRXYWH,AES_INT_IN+2
+	move.w	AES_MESSAGE+8,AES_INT_IN+4
+	move.w	AES_MESSAGE+10,AES_INT_IN+6
+	move.w	AES_MESSAGE+12,AES_INT_IN+8
+	move.w	AES_MESSAGE+14,AES_INT_IN+10
 	jsr		_call_AES
 	rts
 
 
 AES_event_wm_redraw:		
-	jsr		AES_graf_mouse_hide     ; Lock AES
-	jsr		AES_wind_update_begin   ; Perform Refresh
+	jsr		AES_graf_mouse_hide
+	jsr		AES_wind_update_begin
 	jsr		AES_wind_get_work_xywh
 	jsr		VDI_set_bg_white
 	jsr		VDI_fill_bg_rect
-	jsr		AES_wind_update_end     ; Unlock AES
+	jsr		AES_wind_update_end
 	jsr		AES_graf_mouse_show
 	rts
 
@@ -442,15 +387,11 @@ AES_wind_update_begin:
 	move.w	#AES_CONTROL_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-
-	lea		AES_CONTROL,a0
-	move.w	#107,(a0)				; wind_update
-	move.w	#1,AES_CTRL_INT_IN(a0)
-	move.w	#1,AES_CTRL_INT_OUT(a0)
-	move.w	#1,AES_INT_IN			; BEG_UPDATE
-	
+	move.w	#AES_WIND_UPDATE,AES_CONTROL
+	move.w	#1,AES_CONTROL+AES_CTRL_INT_IN
+	move.w	#1,AES_CONTROL+AES_CTRL_INT_OUT
+	move.w	#BEG_UPDATE,AES_INT_IN
 	jsr		_call_AES
-	
 	rts
 
 	
@@ -459,21 +400,15 @@ AES_wind_update_end:
 	move.w	#AES_CONTROL_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	
-	lea		AES_CONTROL,a0
-	move.w	#107,(a0)				; wind_update
-	move.w	#1,AES_CTRL_INT_IN(a0)
-	move.w	#1,AES_CTRL_INT_OUT(a0)
-	
+	move.w	#AES_WIND_UPDATE,AES_CONTROL
+	move.w	#1,AES_CONTROL+AES_CTRL_INT_IN
+	move.w	#1,AES_CONTROL+AES_CTRL_INT_OUT
 	pea		AES_INT_IN
 	move.w	#AES_INT_IN_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	
-	move.w	#0,AES_INT_IN			; END_UPDATE
-	
+	move.w	#END_UPDATE,AES_INT_IN
 	jsr		_call_AES
-	
 	rts
 
 
@@ -482,18 +417,14 @@ AES_graf_mouse_hide:
 	move.w	#AES_CONTROL_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	
-	lea		AES_CONTROL,a0
-	move.w	#AES_GRAF_MOUSE,(a0)
-	move.w	#1,AES_CTRL_INT_IN(a0)
-	move.w	#1,AES_CTRL_INT_OUT(a0)
-	
+	move.w	#AES_GRAF_MOUSE,AES_CONTROL
+	move.w	#1,AES_CONTROL+AES_CTRL_INT_IN
+	move.w	#1,AES_CONTROL+AES_CTRL_INT_OUT
 	pea		AES_INT_IN
 	move.w	#AES_INT_IN_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	
-	move.w	#256,AES_INT_IN
+	move.w	#HIDE_MOUSE,AES_INT_IN
 	jsr		_call_AES
 	rts
 	
@@ -503,20 +434,14 @@ AES_graf_mouse_show:
 	move.w	#AES_CONTROL_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	
-	lea		AES_CONTROL,a0
-	move.w	#AES_GRAF_MOUSE,(a0)
-	move.w	#1,AES_CTRL_INT_IN(a0)
-	move.w	#1,AES_CTRL_INT_OUT(a0)
-	
+	move.w	#AES_GRAF_MOUSE,AES_CONTROL
+	move.w	#1,AES_CONTROL+AES_CTRL_INT_IN
+	move.w	#1,AES_CONTROL+AES_CTRL_INT_OUT
 	pea		AES_INT_IN
 	move.w	#AES_INT_IN_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	
-	move.w	#257,AES_INT_IN
-	
-	
+	move.w	#SHOW_MOUSE,AES_INT_IN
 	jsr		_call_AES
 	rts
 
@@ -526,28 +451,21 @@ AES_graf_handle:
 	move.w	#AES_CONTROL_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-
-	lea		AES_CONTROL,a0	
-	move.w	#AES_GRAF_HANDLE,(a0)
-	move.w	#0,AES_CTRL_INT_IN(a0)
-	move.w	#5,AES_CTRL_INT_OUT(a0)
-	move.w	#0,AES_CTRL_ADDR_IN(a0)
-	move.w	#0,AES_CTRL_ADDR_OUT(a0)
-	
+	move.w	#AES_GRAF_HANDLE,AES_CONTROL
+	move.w	#0,AES_CONTROL+AES_CTRL_INT_IN
+	move.w	#5,AES_CONTROL+AES_CTRL_INT_OUT
+	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_IN
+	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_OUT
 	pea		AES_INT_OUT
 	move.w	#AES_INT_OUT_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	
 	jsr		_call_AES
-	
-	lea		AES_INT_OUT,a0	
-	move.w	(a0),AES_PHYS_HANDLE	
-	move.w	2(a0),AES_CHAR_W
-	move.w	4(a0),AES_CHAR_H
-	move.w	6(a0),AES_BOX_W
-	move.w	8(a0),AES_BOX_H
-	
+	move.w	AES_INT_OUT,AES_PHYS_HANDLE	
+	move.w	AES_INT_OUT+2,AES_CHAR_W
+	move.w	AES_INT_OUT+4,AES_CHAR_H
+	move.w	AES_INT_OUT+6,AES_BOX_W
+	move.w	AES_INT_OUT+8,AES_BOX_H
 	rts
 
 	
@@ -556,62 +474,46 @@ AES_wind_create:
 	move.w	#AES_CONTROL_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-
-	lea		AES_CONTROL,a0				; Set up Control Block
-	move.w	#AES_WIND_CREATE,(a0)
-	move.w	#5,AES_CTRL_INT_IN(a0)
-	move.w	#1,AES_CTRL_INT_OUT(a0)
-	move.w	#0,AES_CTRL_ADDR_IN(a0)
-	move.w	#0,AES_CTRL_ADDR_OUT(a0)
-	
+	move.w	#AES_WIND_CREATE,AES_CONTROL
+	move.w	#5,AES_CONTROL+AES_CTRL_INT_IN
+	move.w	#1,AES_CONTROL+AES_CTRL_INT_OUT
+	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_IN
+	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_OUT
 	pea		AES_INT_IN
 	move.w	#AES_INT_IN_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	
-	lea		AES_INT_IN,a0				; Set up int_in block
-	move.w	#AES_DEF_WINDOW_FLAGS,(a0)	; wi_crkind	- Window Kind
-	move.w	#AES_DEF_WINDOW_X,2(a0)		; wi_crwx - Window X
-	move.w	#AES_DEF_WINDOW_H,4(a0)		; wi_crwy - Window Y
-	move.w	#AES_DEF_WINDOW_W,6(a0)		; wi_crww - Window Width
-	move.w	#AES_DEF_WINDOW_H,8(a0) 	; wi_crwh - Window Height
-	
-	;move.w	#0,AES_INT_OUT				; Set up int_out block
-	
+	move.w	#AES_DEF_WINDOW_FLAGS,AES_INT_IN
+	move.w	DESK_X,AES_INT_IN+2
+	move.w	DESK_Y,AES_INT_IN+4
+	move.w	DESK_W,AES_INT_IN+6
+	move.w	DESK_H,AES_INT_IN+8
 	jsr		_call_AES
-	
 	move.w	AES_INT_OUT,AES_WINDOW_HANDLE
-	
 	rts
 
 
 AES_wind_open:	
+    move.w  #FALSE,IS_FULLED
 	pea		AES_CONTROL
 	move.w	#AES_CONTROL_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	
-	lea		AES_CONTROL,a0
-	move.w	#AES_WIND_OPEN,(a0)
-	move.w	#5,AES_CTRL_INT_IN(a0)
-	move.w	#1,AES_CTRL_INT_OUT(a0)
-	move.w	#0,AES_CTRL_ADDR_IN(a0)
-	move.w	#0,AES_CTRL_ADDR_OUT(a0)
-	
+	move.w	#AES_WIND_OPEN,AES_CONTROL
+	move.w	#5,AES_CONTROL+AES_CTRL_INT_IN
+	move.w	#1,AES_CONTROL+AES_CTRL_INT_OUT
+	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_IN
+	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_OUT
 	pea		AES_INT_IN
 	move.w	#AES_INT_IN_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	
-	lea		AES_INT_IN,a0
-	move.w	AES_WINDOW_HANDLE,(a0)
-	move.w	#AES_DEF_WINDOW_X,2(a0)
-	move.w	#AES_DEF_WINDOW_Y,4(a0)
-	move.w	#AES_DEF_WINDOW_W,6(a0)
-	move.w	#AES_DEF_WINDOW_H,8(a0)
-	
+	move.w	AES_WINDOW_HANDLE,AES_INT_IN
+	move.w	#AES_DEF_WINDOW_X,AES_INT_IN+2
+	move.w	#AES_DEF_WINDOW_Y,AES_INT_IN+4
+	move.w	#AES_DEF_WINDOW_W,AES_INT_IN+6
+	move.w	#AES_DEF_WINDOW_H,AES_INT_IN+8
 	jsr		_call_AES
-	
 	rts
 
 
@@ -620,55 +522,44 @@ AES_wind_set_title:
 	move.w	#AES_CONTROL_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	
-	lea		AES_CONTROL,a0
-	move.w	#AES_WIND_SET,(a0)
-	move.w	#6,AES_CTRL_INT_IN(a0)
-	move.w	#1,AES_CTRL_INT_OUT(a0)
-	move.w	#0,AES_CTRL_ADDR_IN(a0)
-	move.w	#0,AES_CTRL_ADDR_OUT(a0)
-	
+	move.w	#AES_WIND_SET,AES_CONTROL
+	move.w	#6,AES_CONTROL+AES_CTRL_INT_IN
+	move.w	#1,AES_CONTROL+AES_CTRL_INT_OUT
+	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_IN
+	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_OUT
 	pea		AES_INT_IN
 	move.w	#AES_INT_IN_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	
-	lea		AES_INT_IN,a0
-	move.w	AES_WINDOW_HANDLE,(a0)	
-	move.w	#2,2(a0) ; WF_NAME
-	move.l	#STR_WINDOW_TITLE,4(a0)
-	move.w	#0,8(a0)
-	move.w	#0,10(a0)
+	move.w	AES_WINDOW_HANDLE,AES_INT_IN	
+	move.w	#WF_NAME,AES_INT_IN+2
+	move.l	#STR_WINDOW_TITLE,AES_INT_IN+4
+	move.w	#0,AES_INT_IN+8
+	move.w	#0,AES_INT_IN+10
 	jsr		_call_AES
 	rts
 	
+
 AES_wind_set_info:
 	pea		AES_CONTROL
 	move.w	#AES_CONTROL_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-
-	lea		AES_CONTROL,a0
-	move.w	#AES_WIND_SET,(a0)
-	move.w	#6,AES_CTRL_INT_IN(a0)
-	move.w	#1,AES_CTRL_INT_OUT(a0)
-	move.w	#0,AES_CTRL_ADDR_IN(a0)
-	move.w	#0,AES_CTRL_ADDR_OUT(a0)
-	
+	move.w	#AES_WIND_SET,AES_CONTROL
+	move.w	#6,AES_CONTROL+AES_CTRL_INT_IN
+	move.w	#1,AES_CONTROL+AES_CTRL_INT_OUT
+	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_IN
+	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_OUT
 	pea		AES_INT_IN
 	move.w	#AES_INT_IN_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	
-	lea		AES_INT_IN,a0
-	move.w	AES_WINDOW_HANDLE,(a0)	
-	move.w	#WF_INFO,2(a0) ; 
-	move.l	#STR_WINDOW_INFO,4(a0)
-	move.w	#0,8(a0)
-	move.w	#0,10(a0)
-	
+	move.w	AES_WINDOW_HANDLE,AES_INT_IN	
+	move.w	#WF_INFO,AES_INT_IN+2
+	move.l	#STR_WINDOW_INFO,AES_INT_IN+4
+	move.w	#0,AES_INT_IN+8
+	move.w	#0,AES_INT_IN+10
 	jsr		_call_AES
-	
 	rts
 
 
@@ -677,23 +568,17 @@ AES_wind_close:
 	move.w	#AES_CONTROL_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	
-	lea		AES_CONTROL,a0
-	move.w	#AES_WIND_CLOSE,(a0)
-	move.w	#1,AES_CTRL_INT_IN(a0)
-	move.w	#1,AES_CTRL_INT_OUT(a0)
-	move.w	#0,AES_CTRL_ADDR_IN(a0)
-	move.w	#0,AES_CTRL_ADDR_OUT(a0)
-	
+	move.w	#AES_WIND_CLOSE,AES_CONTROL
+	move.w	#1,AES_CONTROL+AES_CTRL_INT_IN
+	move.w	#1,AES_CONTROL+AES_CTRL_INT_OUT
+	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_IN
+	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_OUT
 	pea		AES_INT_IN
 	move.w	#AES_INT_IN_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	
 	move.w	AES_WINDOW_HANDLE,AES_INT_IN
-	
 	jsr		_call_AES
-	
 	rts
 	
 	
@@ -702,23 +587,17 @@ AES_wind_delete:
 	move.w	#AES_CONTROL_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-
-	lea		AES_CONTROL,a0
-	move.w	#AES_WIND_DELETE,(a0)
-	move.w	#1,AES_CTRL_INT_IN(a0)
-	move.w	#1,AES_CTRL_INT_OUT(a0)
-	move.w	#0,AES_CTRL_ADDR_IN(a0)
-	move.w	#0,AES_CTRL_ADDR_OUT(a0)
-	
+	move.w	#AES_WIND_DELETE,AES_CONTROL
+	move.w	#1,AES_CONTROL+AES_CTRL_INT_IN
+	move.w	#1,AES_CONTROL+AES_CTRL_INT_OUT
+	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_IN
+	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_OUT
 	pea		AES_INT_IN
 	move.w	#AES_INT_IN_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	
 	move.w	AES_WINDOW_HANDLE,AES_INT_IN
-	
 	jsr		_call_AES
-	
 	rts
 	
 	
@@ -727,29 +606,22 @@ AES_wind_get_work_xywh:
 	move.w	#AES_CONTROL_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-
-	lea		AES_CONTROL,a0
-	move.w	#AES_WIND_GET,(a0)
-	move.w	#2,AES_CTRL_INT_IN(a0)
-	move.w	#5,AES_CTRL_INT_OUT(a0)
-	move.w	#0,AES_CTRL_ADDR_IN(a0)
-	move.w	#0,AES_CTRL_ADDR_OUT(a0)
-	
+	move.w	#AES_WIND_GET,AES_CONTROL
+	move.w	#2,AES_CONTROL+AES_CTRL_INT_IN
+	move.w	#5,AES_CONTROL+AES_CTRL_INT_OUT
+	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_IN
+	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_OUT
 	pea		AES_INT_IN
 	move.w	#AES_INT_IN_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	
 	move.w	AES_WINDOW_HANDLE,AES_INT_IN
-	move.w	#WF_WORKXYWH,AES_INT_IN+2			; 
-	
+	move.w	#WF_WORKXYWH,AES_INT_IN+2
 	jsr		_call_AES
-	
-	move.w	AES_INT_OUT+2,WORK_X    ; Save Results
+	move.w	AES_INT_OUT+2,WORK_X
 	move.w	AES_INT_OUT+4,WORK_Y
 	move.w	AES_INT_OUT+6,WORK_W
 	move.w	AES_INT_OUT+8,WORK_H	
-	
 	rts
 
 
@@ -758,29 +630,22 @@ AES_wind_get_prev_xywh:
 	move.w	#AES_CONTROL_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-
-	lea		AES_CONTROL,a0
-	move.w	#AES_WIND_GET,(a0)
-	move.w	#2,AES_CTRL_INT_IN(a0)
-	move.w	#5,AES_CTRL_INT_OUT(a0)
-	move.w	#0,AES_CTRL_ADDR_IN(a0)
-	move.w	#0,AES_CTRL_ADDR_OUT(a0)
-	
+	move.w	#AES_WIND_GET,AES_CONTROL
+	move.w	#2,AES_CONTROL+AES_CTRL_INT_IN
+	move.w	#5,AES_CONTROL+AES_CTRL_INT_OUT
+	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_IN
+	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_OUT
 	pea		AES_INT_IN
 	move.w	#AES_INT_IN_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	
 	move.w	AES_WINDOW_HANDLE,AES_INT_IN
-	move.w	#WF_PREVXYWH,AES_INT_IN+2			; 
-	
+	move.w	#WF_PREVXYWH,AES_INT_IN+2
 	jsr		_call_AES
-	
-	move.w	AES_INT_OUT+2,PREV_X    ; Save Results
+	move.w	AES_INT_OUT+2,PREV_X
 	move.w	AES_INT_OUT+4,PREV_Y
 	move.w	AES_INT_OUT+6,PREV_W
 	move.w	AES_INT_OUT+8,PREV_H	
-	
 	rts
 
 	
@@ -789,35 +654,54 @@ AES_wind_get_full_xywh:
 	move.w	#AES_CONTROL_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-
-	lea		AES_CONTROL,a0
-	move.w	#AES_WIND_GET,(a0)
-	move.w	#2,AES_CTRL_INT_IN(a0)
-	move.w	#5,AES_CTRL_INT_OUT(a0)
-	move.w	#0,AES_CTRL_ADDR_IN(a0)
-	move.w	#0,AES_CTRL_ADDR_OUT(a0)
-	
+	move.w	#AES_WIND_GET,AES_CONTROL
+	move.w	#2,AES_CONTROL+AES_CTRL_INT_IN
+	move.w	#5,AES_CONTROL+AES_CTRL_INT_OUT
+	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_IN
+	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_OUT
 	pea		AES_INT_IN
 	move.w	#AES_INT_IN_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	
 	move.w	AES_WINDOW_HANDLE,AES_INT_IN
-	move.w	#WF_FULLXYWH,AES_INT_IN+2			; 
-	
+	move.w	#WF_FULLXYWH,AES_INT_IN+2
 	jsr		_call_AES
-	
-	move.w	AES_INT_OUT+2,FULL_X    ; Save Results
+	move.w	AES_INT_OUT+2,FULL_X
 	move.w	AES_INT_OUT+4,FULL_Y
 	move.w	AES_INT_OUT+6,FULL_W
-	move.w	AES_INT_OUT+8,FULL_H	
-	
+	move.w	AES_INT_OUT+8,FULL_H
 	rts
-	
+
+
+AES_wind_get_desk_xywh:
+	pea		AES_CONTROL
+	move.w	#AES_CONTROL_SZ,-(sp)
+	jsr		ZERO_ARRAY
+	addq.l	#6,sp
+	move.w	#AES_WIND_GET,AES_CONTROL
+	move.w	#2,AES_CONTROL+AES_CTRL_INT_IN
+	move.w	#5,AES_CONTROL+AES_CTRL_INT_OUT
+	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_IN
+	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_OUT
+	pea		AES_INT_IN
+	move.w	#AES_INT_IN_SZ,-(sp)
+	jsr		ZERO_ARRAY
+	addq.l	#6,sp
+	move.w	#0,AES_INT_IN
+	move.w	#WF_WORKXYWH,AES_INT_IN+2
+	jsr		_call_AES
+	move.w	AES_INT_OUT+2,DESK_X
+	move.w	AES_INT_OUT+4,DESK_Y
+	move.w	AES_INT_OUT+6,DESK_W
+	move.w	AES_INT_OUT+8,DESK_H
+	rts
+
+
 ;--------------------------------------
 ; OS Call Routines
 ;--------------------------------------
 	
+
 _call_AES:
 	move.l	#AES_PARAM_BLOCK,d1
 	move.l	#AES_ID,d0
@@ -893,10 +777,15 @@ FULL_Y:					ds.w	1
 FULL_W:					ds.w	1
 FULL_H:					ds.w	1
 
+DESK_X:					ds.w	1
+DESK_Y:					ds.w	1
+DESK_W:					ds.w	1
+DESK_H:					ds.w	1
 
 ; VDI Other
 
 SCREEN_RES:				ds.w	1
+IS_FULLED:              ds.w    1
 
 ; VDI Arrays
 
@@ -911,6 +800,7 @@ VDI_INT_IN:				ds.w	128
 VDI_PTS_IN:				ds.w	128
 VDI_INT_OUT:			ds.w	128
 VDI_PTS_OUT:			ds.w	128
+
 
 ;--------------------------------------
 	section data
@@ -984,6 +874,7 @@ AES_WIND_CLOSE			EQU		102
 AES_WIND_DELETE			EQU		103
 AES_WIND_GET			EQU		104
 AES_WIND_SET			EQU		105
+AES_WIND_UPDATE         EQU     107
 
 ; Global Array Offests
 
@@ -1017,10 +908,18 @@ AES_DEF_WINDOW_FLAGS	EQU 	$2F
 ; VDI Constants
 ;--------------------------------------
 
+VDI_CLRWK               EQU     3
 VDI_CURTEXT				EQU		5
 VDI_CURTEXT_SUB			EQU		12
+
 VDI_OPNVWK				EQU		100
+VDI_CLSWK               EQU     101
 VDI_OPCODE				EQU		115
+
+VSF_COLOR               EQU     25
+VR_RECFL                EQU     114
+HIDE_MOUSE              EQU     256
+SHOW_MOUSE              EQU     257
 
 ; VDI contrl offsets
 
@@ -1036,6 +935,7 @@ VDI_CTRL_DEV_HANDLE		EQU		12
 ; Events
 ;--------------------------------------
 
+EVENT_MESSAG            EQU     23
 EVENT_MN_SELECTED		EQU 	10
 EVENT_WM_REDRAW			EQU		20
 EVENT_WM_TOPPED			EQU		21
@@ -1062,10 +962,19 @@ WF_CURRXYWH				EQU		5
 WF_PREVXYWH				EQU		6
 WF_FULLXYWH				EQU		7
 
+END_UPDATE              EQU     0
+BEG_UPDATE              EQU     1
+
+NDC_COORDS              EQU     0
+RASTER_COORDS           EQU     2
+
+FALSE                   EQU     $FFFF
+TRUE                    EQU     $1111
+
 ;--------------------------------------
 ;	Includes
 ;--------------------------------------
 
-	include	"ASCII.S"
-	include	"GEMDOS.S"
-	include	"XBIOS.S"
+	include	"../INCDIR/ASCII.S"
+	include	"../INCDIR/GEMDOS.S"
+	include	"../INCDIR/XBIOS.S"
