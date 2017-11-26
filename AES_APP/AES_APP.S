@@ -379,6 +379,7 @@ AES_event_wm_redraw:
 	jsr		VDI_fill_bg_rect
 	jsr		AES_wind_update_end
 	jsr		AES_graf_mouse_show
+    jsr     AES_graf_mouse_arrow
 	rts
 
 
@@ -411,7 +412,23 @@ AES_wind_update_end:
 	jsr		_call_AES
 	rts
 
-
+AES_graf_mouse_arrow:
+	pea		AES_CONTROL
+	move.w	#AES_CONTROL_SZ,-(sp)
+	jsr		ZERO_ARRAY
+	addq.l	#6,sp
+	move.w	#AES_GRAF_MOUSE,AES_CONTROL
+	move.w	#1,AES_CONTROL+AES_CTRL_INT_IN
+	move.w	#1,AES_CONTROL+AES_CTRL_INT_OUT
+	pea		AES_INT_IN
+	move.w	#AES_INT_IN_SZ,-(sp)
+	jsr		ZERO_ARRAY
+	addq.l	#6,sp
+	move.w	#MOUSE_ARROW,AES_INT_IN
+	jsr		_call_AES
+	rts
+	
+	
 AES_graf_mouse_hide:
 	pea		AES_CONTROL
 	move.w	#AES_CONTROL_SZ,-(sp)
@@ -821,12 +838,12 @@ STR_WIND_CREATE_SUCC:
 	even
 
 STR_WINDOW_TITLE:
-	dc.b	"Window Title",0
+	dc.b	"Ash's AES Masterpiece",0
 	
 	even
 
 STR_WINDOW_INFO:
-	dc.b	"Window Information",0
+	dc.b	"Glorious Informaty",0
 	
 	even
 
@@ -970,6 +987,17 @@ RASTER_COORDS           EQU     2
 
 FALSE                   EQU     $FFFF
 TRUE                    EQU     $1111
+
+MOUSE_ARROW             EQU 0	;   Arrow
+MOUSE_TEXT_CRSR         EQU 1	;   Text cursor
+MOUSE_HOURGLASS         EQU 2	;   Hourglass, bee
+MOUSE_BUSY_BEE          EQU 2	;   See HOURGLASS
+MOUSE_BUSYBEE           EQU 2	;   See HOURGLASS
+MOUSE_POINT_HAND        EQU 3	;   Pointing hand
+MOUSE_FLAT_HAND         EQU 4	;   Flat hand
+MOUSE_THIN_CROSS        EQU 5	;   Thin crosshairs
+MOUSE_THICK_CROSS       EQU 6	;   Thick crosshairs
+MOUSE_OUTLN_CROSS       EQU 7	;   Outlined crosshairs
 
 ;--------------------------------------
 ;	Includes
