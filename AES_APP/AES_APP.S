@@ -9,68 +9,103 @@
 ;		Header for an AES Application
 
 ;--------------------------------------
+;	Includes
+;--------------------------------------
+
+	include	"ASCII.S"
+	include	"AES.S"
+	include	"VDI.S"
+	include	"GEMDOS.S"
+	include	"XBIOS.S"
+ 
+;--------------------------------------
 ; Application Starts Here
 ;--------------------------------------
 
 	section text
 
+memory_init:                    ; Set base page address in a5
+    move.l a7,a5                ; Save a7 so we can get the base page address 
+    move.l BASE_PAGE_PTR(a5),a5 ; a5 = basepage addressk
+    ; Calculate the total amount of memory used by
+    ; our program (including stack space) in d0
+                                        ; total memory used =
+    move.l  CODE_SZ(a5),d0              ; length of code segment
+    add.l   DATA_SZ(a5),d0              ; + length of data segment
+    add.l   BSS_SZ(a5),d0               ; + length of uninitialized storage segment 
+    add.l   #STACK_SZ+BASE_PAGE_SZ,d0   ; + (size of the base page + our stack)
+    ; Calculate the size of our stack and move it to the stack pointer
+                    ; stack address =
+    move.l d0,d1    ;   size of program memory
+    add.l a5,d1     ; + program's base address,
+    and.l #-2,d1    ; pick off odd bit to make sure that the  
+                    ; stack starts on a word boundary (it must).  
+    move.l d1,a7    ; set stack pointer to our stack
+                    ; which is stk bytes above end of BSS
+    ; Use the GEMD0S SETBLOCK call to reserve the area of memory 
+    ; actually used for the program and stack, and release the 
+    ; rest back to the free memory pool.
+    move.l  d0,-(sp)                ; push the size of program memory
+                                    ; (first SETBLOCK parameter) on the stack.
+    move.l  a5,-(sp)                ; push the beginning address of the
+                                    ; program memory area (2nd SETBLOCK parameter), 
+    clr.w   -(sp)                   ; clear a dummy place-holder word
+    move.w  #GEMDOS_MSHRINK,-(sp)   ; finally, push the GEMDOS command number
+                                    ; for the SETBLOCK function
+    trap    #TRAP_GEMDOS            ; call GEMDOS
+    add.l   #12,sp                  ; and clear our arguments off the stack,
+
 main:
 	jsr		AES_appl_init
 	jsr		AES_graf_handle
 	jsr		VDI_get_screen_res	
+    jsr     AES_rsrc_load
 	jsr		VDI_opnvwk
     jsr     AES_wind_get_desk_xywh
 	jsr		AES_wind_create
 	jsr		AES_wind_set_title
 	jsr		AES_wind_set_info
 	jsr		AES_wind_open
-	
 main_loop:
 	jsr		AES_event_messag
-	
 main_check_sized:
 	move.w	AES_MESSAGE,d1
-	cmpi.w	#EVENT_WM_SIZED,d1
+	cmpi.w	#AES_EVENT_WM_SIZED,d1
 	bne		main_check_redraw
 	jsr		AES_event_wm_sized
-	
 main_check_redraw:
 	move.w	AES_MESSAGE,d1
-	cmpi.w	#EVENT_WM_REDRAW,d1
+	cmpi.w	#AES_EVENT_WM_REDRAW,d1
 	bne		main_check_moved
 	jsr		AES_event_wm_redraw
-	
 main_check_moved:
 	move.w	AES_MESSAGE,d1
-	cmpi.w	#EVENT_WM_MOVED,d1
+	cmpi.w	#AES_EVENT_WM_MOVED,d1
 	bne		main_check_fulled
 	jsr		AES_event_wm_moved
-
 main_check_fulled:
 	move.w	AES_MESSAGE,d1
-	cmpi.w	#EVENT_WM_FULLED,d1
+	cmpi.w	#AES_EVENT_WM_FULLED,d1
 	bne		main_check_close
 	jsr		AES_wind_get_full_xywh
 	jsr		AES_event_wm_fulled
 	jsr		AES_wind_get_prev_xywh
-	
 main_check_close:	
 	move.w	AES_MESSAGE,d1
-	cmpi.w	#EVENT_WM_CLOSED,d1
+	cmpi.w	#AES_EVENT_WM_CLOSED,d1
 	beq		main_exit
-	
 main_next:
 	jmp		main_loop
-	
 main_exit:
 	jsr		AES_wind_close
 	jsr		AES_wind_delete
 	jsr		VDI_clsvwk
+    jsr     AES_rsrc_free
 	jsr		AES_appl_exit
 	move.w	#GEMDOS_PTERM0,-(sp)
 	trap	#TRAP_GEMDOS
-	rts
 	
+
 ZERO_ARRAY:
 	move.w	4(sp),d0	; size
 	movea.l	6(sp),a0	; pointer
@@ -102,6 +137,8 @@ DEBUG:
 	trap	#TRAP_GEMDOS
 	addq.l	#2,sp
 	rts
+
+
 
 
 ;--------------------------------------
@@ -149,7 +186,7 @@ _VDI_opnvwk_int_in_init_loop:
 	move.w	#1,(a0)+
 	dbra	d0,_VDI_opnvwk_int_in_init_loop
 	move.w	SCREEN_RES,VDI_INT_IN
-	move.w	#RASTER_COORDS,VDI_INT_IN+20
+	move.w	#VDI_RASTER_COORDS,VDI_INT_IN+20
 	jsr		_call_VDI
 	move.w	VDI_CONTROL+VDI_CTRL_DEV_HANDLE,VDI_WK_HANDLE
 	cmpi.w	#0,VDI_WK_HANDLE
@@ -198,7 +235,7 @@ VDI_set_bg_white:
 	move.w	#VDI_CONTROL_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	move.w	#VSF_COLOR,VDI_CONTROL
+	move.w	#VDI_VSF_COLOR,VDI_CONTROL
 	move.w	#0,VDI_CONTROL+VDI_CTRL_PTS_IN
 	move.w	#0,VDI_CONTROL+VDI_CTRL_PTS_OUT
 	move.w	#1,VDI_CONTROL+VDI_CTRL_INT_IN
@@ -214,19 +251,19 @@ VDI_fill_bg_rect:
 	move.w	#VDI_CONTROL_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	move.w	#VR_RECFL,VDI_CONTROL
+	move.w	#VDI_VR_RECFL,VDI_CONTROL
 	move.w	#2,VDI_CONTROL+VDI_CTRL_PTS_IN
 	move.w	#0,VDI_CONTROL+VDI_CTRL_PTS_OUT
 	move.w	#0,VDI_CONTROL+VDI_CTRL_INT_IN
 	move.w	#0,VDI_CONTROL+VDI_CTRL_INT_OUT
 	move.w	VDI_WK_HANDLE,VDI_CONTROL+VDI_CTRL_DEV_HANDLE
-	move.w	WORK_X,VDI_PTS_IN
-	move.w	WORK_Y,VDI_PTS_IN+2
-	move.w	WORK_X,d0
-	add.w	WORK_W,d0
+	move.w	AES_WORK_X,VDI_PTS_IN
+	move.w	AES_WORK_Y,VDI_PTS_IN+2
+	move.w	AES_WORK_X,d0
+	add.w	AES_WORK_W,d0
 	move.w	d0,VDI_PTS_IN+4
-	move.w	WORK_Y,d0		
-	add.w	WORK_H,d0
+	move.w	AES_WORK_Y,d0		
+	add.w	AES_WORK_H,d0
 	move.w	d0,VDI_PTS_IN+6
 	jsr		_call_VDI
 	rts
@@ -284,7 +321,7 @@ AES_event_messag:
 	move.w	#AES_CONTROL_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	move.w	#EVENT_MESSAG,AES_CONTROL
+	move.w	#AES_EVENT_MESSAG,AES_CONTROL
 	move.w	#0,AES_CONTROL+AES_CTRL_INT_IN
 	move.w	#1,AES_CONTROL+AES_CTRL_INT_OUT
 	move.w	#1,AES_CONTROL+AES_CTRL_ADDR_IN
@@ -307,7 +344,7 @@ AES_event_wm_sized:
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
 	move.w	AES_MESSAGE+6,AES_INT_IN
-	move.w	#WF_CURRXYWH,AES_INT_IN+2
+	move.w	#AES_WF_CURRXYWH,AES_INT_IN+2
 	move.w	AES_MESSAGE+8,AES_INT_IN+4
 	move.w	AES_MESSAGE+10,AES_INT_IN+6
 	move.w	AES_MESSAGE+12,AES_INT_IN+8
@@ -328,22 +365,22 @@ AES_event_wm_fulled:
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
 	move.w	AES_MESSAGE+6,AES_INT_IN
-	move.w	#WF_CURRXYWH,AES_INT_IN+2
+	move.w	#AES_WF_CURRXYWH,AES_INT_IN+2
     
     cmpi.w  #FALSE,IS_FULLED
     bne     AES_event_wm_fulled_unfull
 
-	move.w	DESK_X,AES_INT_IN+4
-	move.w	DESK_Y,AES_INT_IN+6
-	move.w	DESK_W,AES_INT_IN+8
-	move.w	DESK_H,AES_INT_IN+10
+	move.w	AES_DESK_X,AES_INT_IN+4
+	move.w	AES_DESK_Y,AES_INT_IN+6
+	move.w	AES_DESK_W,AES_INT_IN+8
+	move.w	AES_DESK_H,AES_INT_IN+10
     move.w  #TRUE,IS_FULLED
     jmp     AES_event_wm_fulled_apply
 AES_event_wm_fulled_unfull:
-    move.w	PREV_X,AES_INT_IN+4
-	move.w	PREV_Y,AES_INT_IN+6
-	move.w	PREV_W,AES_INT_IN+8
-	move.w	PREV_H,AES_INT_IN+10
+    move.w	AES_PREV_X,AES_INT_IN+4
+	move.w	AES_PREV_Y,AES_INT_IN+6
+	move.w	AES_PREV_W,AES_INT_IN+8
+	move.w	AES_PREV_H,AES_INT_IN+10
     move.w  #FALSE,IS_FULLED
 AES_event_wm_fulled_apply:
 	jsr		_call_AES
@@ -362,7 +399,7 @@ AES_event_wm_moved:
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
 	move.w	AES_MESSAGE+6,AES_INT_IN
-	move.w	#WF_CURRXYWH,AES_INT_IN+2
+	move.w	#AES_WF_CURRXYWH,AES_INT_IN+2
 	move.w	AES_MESSAGE+8,AES_INT_IN+4
 	move.w	AES_MESSAGE+10,AES_INT_IN+6
 	move.w	AES_MESSAGE+12,AES_INT_IN+8
@@ -391,7 +428,7 @@ AES_wind_update_begin:
 	move.w	#AES_WIND_UPDATE,AES_CONTROL
 	move.w	#1,AES_CONTROL+AES_CTRL_INT_IN
 	move.w	#1,AES_CONTROL+AES_CTRL_INT_OUT
-	move.w	#BEG_UPDATE,AES_INT_IN
+	move.w	#AES_BEG_UPDATE,AES_INT_IN
 	jsr		_call_AES
 	rts
 
@@ -408,7 +445,7 @@ AES_wind_update_end:
 	move.w	#AES_INT_IN_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	move.w	#END_UPDATE,AES_INT_IN
+	move.w	#AES_END_UPDATE,AES_INT_IN
 	jsr		_call_AES
 	rts
 
@@ -424,7 +461,7 @@ AES_graf_mouse_arrow:
 	move.w	#AES_INT_IN_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	move.w	#MOUSE_ARROW,AES_INT_IN
+	move.w	#AES_MOUSE_ARROW,AES_INT_IN
 	jsr		_call_AES
 	rts
 	
@@ -441,7 +478,7 @@ AES_graf_mouse_hide:
 	move.w	#AES_INT_IN_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	move.w	#HIDE_MOUSE,AES_INT_IN
+	move.w	#VDI_HIDE_MOUSE,AES_INT_IN
 	jsr		_call_AES
 	rts
 	
@@ -458,7 +495,7 @@ AES_graf_mouse_show:
 	move.w	#AES_INT_IN_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	move.w	#SHOW_MOUSE,AES_INT_IN
+	move.w	#VDI_SHOW_MOUSE,AES_INT_IN
 	jsr		_call_AES
 	rts
 
@@ -500,11 +537,11 @@ AES_wind_create:
 	move.w	#AES_INT_IN_SZ,-(sp)
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
-	move.w	#AES_DEF_WINDOW_FLAGS,AES_INT_IN
-	move.w	DESK_X,AES_INT_IN+2
-	move.w	DESK_Y,AES_INT_IN+4
-	move.w	DESK_W,AES_INT_IN+6
-	move.w	DESK_H,AES_INT_IN+8
+	move.w	#DEF_WINDOW_FLAGS,AES_INT_IN
+	move.w	AES_DESK_X,AES_INT_IN+2
+	move.w	AES_DESK_Y,AES_INT_IN+4
+	move.w	AES_DESK_W,AES_INT_IN+6
+	move.w	AES_DESK_H,AES_INT_IN+8
 	jsr		_call_AES
 	move.w	AES_INT_OUT,AES_WINDOW_HANDLE
 	rts
@@ -526,10 +563,10 @@ AES_wind_open:
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
 	move.w	AES_WINDOW_HANDLE,AES_INT_IN
-	move.w	#AES_DEF_WINDOW_X,AES_INT_IN+2
-	move.w	#AES_DEF_WINDOW_Y,AES_INT_IN+4
-	move.w	#AES_DEF_WINDOW_W,AES_INT_IN+6
-	move.w	#AES_DEF_WINDOW_H,AES_INT_IN+8
+	move.w	#DEF_WINDOW_X,AES_INT_IN+2
+	move.w	#DEF_WINDOW_Y,AES_INT_IN+4
+	move.w	#DEF_WINDOW_W,AES_INT_IN+6
+	move.w	#DEF_WINDOW_H,AES_INT_IN+8
 	jsr		_call_AES
 	rts
 
@@ -549,7 +586,7 @@ AES_wind_set_title:
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
 	move.w	AES_WINDOW_HANDLE,AES_INT_IN	
-	move.w	#WF_NAME,AES_INT_IN+2
+	move.w	#AES_WF_NAME,AES_INT_IN+2
 	move.l	#STR_WINDOW_TITLE,AES_INT_IN+4
 	move.w	#0,AES_INT_IN+8
 	move.w	#0,AES_INT_IN+10
@@ -572,7 +609,7 @@ AES_wind_set_info:
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
 	move.w	AES_WINDOW_HANDLE,AES_INT_IN	
-	move.w	#WF_INFO,AES_INT_IN+2
+	move.w	#AES_WF_INFO,AES_INT_IN+2
 	move.l	#STR_WINDOW_INFO,AES_INT_IN+4
 	move.w	#0,AES_INT_IN+8
 	move.w	#0,AES_INT_IN+10
@@ -633,12 +670,12 @@ AES_wind_get_work_xywh:
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
 	move.w	AES_WINDOW_HANDLE,AES_INT_IN
-	move.w	#WF_WORKXYWH,AES_INT_IN+2
+	move.w	#AES_WF_WORKXYWH,AES_INT_IN+2
 	jsr		_call_AES
-	move.w	AES_INT_OUT+2,WORK_X
-	move.w	AES_INT_OUT+4,WORK_Y
-	move.w	AES_INT_OUT+6,WORK_W
-	move.w	AES_INT_OUT+8,WORK_H	
+	move.w	AES_INT_OUT+2,AES_WORK_X
+	move.w	AES_INT_OUT+4,AES_WORK_Y
+	move.w	AES_INT_OUT+6,AES_WORK_W
+	move.w	AES_INT_OUT+8,AES_WORK_H	
 	rts
 
 
@@ -657,12 +694,12 @@ AES_wind_get_prev_xywh:
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
 	move.w	AES_WINDOW_HANDLE,AES_INT_IN
-	move.w	#WF_PREVXYWH,AES_INT_IN+2
+	move.w	#AES_WF_PREVXYWH,AES_INT_IN+2
 	jsr		_call_AES
-	move.w	AES_INT_OUT+2,PREV_X
-	move.w	AES_INT_OUT+4,PREV_Y
-	move.w	AES_INT_OUT+6,PREV_W
-	move.w	AES_INT_OUT+8,PREV_H	
+	move.w	AES_INT_OUT+2,AES_PREV_X
+	move.w	AES_INT_OUT+4,AES_PREV_Y
+	move.w	AES_INT_OUT+6,AES_PREV_W
+	move.w	AES_INT_OUT+8,AES_PREV_H	
 	rts
 
 	
@@ -681,12 +718,12 @@ AES_wind_get_full_xywh:
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
 	move.w	AES_WINDOW_HANDLE,AES_INT_IN
-	move.w	#WF_FULLXYWH,AES_INT_IN+2
+	move.w	#AES_WF_FULLXYWH,AES_INT_IN+2
 	jsr		_call_AES
-	move.w	AES_INT_OUT+2,FULL_X
-	move.w	AES_INT_OUT+4,FULL_Y
-	move.w	AES_INT_OUT+6,FULL_W
-	move.w	AES_INT_OUT+8,FULL_H
+	move.w	AES_INT_OUT+2,AES_FULL_X
+	move.w	AES_INT_OUT+4,AES_FULL_Y
+	move.w	AES_INT_OUT+6,AES_FULL_W
+	move.w	AES_INT_OUT+8,AES_FULL_H
 	rts
 
 
@@ -705,119 +742,96 @@ AES_wind_get_desk_xywh:
 	jsr		ZERO_ARRAY
 	addq.l	#6,sp
 	move.w	#0,AES_INT_IN
-	move.w	#WF_WORKXYWH,AES_INT_IN+2
+	move.w	#AES_WF_WORKXYWH,AES_INT_IN+2
 	jsr		_call_AES
-	move.w	AES_INT_OUT+2,DESK_X
-	move.w	AES_INT_OUT+4,DESK_Y
-	move.w	AES_INT_OUT+6,DESK_W
-	move.w	AES_INT_OUT+8,DESK_H
+	move.w	AES_INT_OUT+2,AES_DESK_X
+	move.w	AES_INT_OUT+4,AES_DESK_Y
+	move.w	AES_INT_OUT+6,AES_DESK_W
+	move.w	AES_INT_OUT+8,AES_DESK_H
 	rts
 
+AES_rsrc_load:
+    pea		AES_CONTROL
+	move.w	#AES_CONTROL_SZ,-(sp)
+	jsr		ZERO_ARRAY
+	addq.l	#6,sp
+    pea		AES_ADDR_IN
+	move.w	#AES_ADDR_IN_SZ,-(sp)
+	jsr		ZERO_ARRAY
+	addq.l	#6,sp
+    pea		AES_INT_OUT
+	move.w	#AES_INT_OUT_SZ,-(sp)
+	jsr		ZERO_ARRAY
+	addq.l	#6,sp
+	move.w	#AES_RSRC_LOAD,AES_CONTROL
+	move.w	#0,AES_CONTROL+AES_CTRL_INT_IN
+	move.w	#1,AES_CONTROL+AES_CTRL_INT_OUT
+	move.w	#1,AES_CONTROL+AES_CTRL_ADDR_IN
+	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_OUT
+	move.l  #STR_RESOURCE_FILE,AES_ADDR_IN
+	jsr		_call_AES
+    cmpi.w  #0,AES_INT_OUT
+    beq     _AES_rscs_load_error
+    rts
+_AES_rscs_load_error:
+    pea     STR_AES_RSRC_LOAD_FAILED
+    jsr     FATAL_ERROR
+    addq.l  #4,sp
+    rts
 
-;--------------------------------------
-; OS Call Routines
-;--------------------------------------
-	
 
-_call_AES:
-	move.l	#AES_PARAM_BLOCK,d1
-	move.l	#AES_ID,d0
-	trap	#2
-	rts
+AES_rsrc_free:
+    pea		AES_CONTROL
+	move.w	#AES_CONTROL_SZ,-(sp)
+	jsr		ZERO_ARRAY
+	addq.l	#6,sp
+    move.w	#AES_RSRC_FREE,AES_CONTROL
+	move.w	#0,AES_CONTROL+AES_CTRL_INT_IN
+	move.w	#1,AES_CONTROL+AES_CTRL_INT_OUT
+	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_IN
+	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_OUT
+	jsr		_call_AES
+    rts
 
+AES_rsrc_get_menu_ptr:
+    pea		AES_CONTROL
+	move.w	#AES_CONTROL_SZ,-(sp)
+	jsr		ZERO_ARRAY
+	addq.l	#6,sp
+    pea		AES_INT_IN
+	move.w	#AES_INT_IN_SZ,-(sp)
+	jsr		ZERO_ARRAY
+	addq.l	#6,sp
+    pea		AES_INT_OUT
+	move.w	#AES_INT_OUT_SZ,-(sp)
+	jsr		ZERO_ARRAY
+	addq.l	#6,sp
+    pea		AES_ADDR_IN
+	move.w	#AES_ADDR_IN_SZ,-(sp)
+	jsr		ZERO_ARRAY
+	addq.l	#6,sp
+    pea		AES_ADDR_OUT
+	move.w	#AES_ADDR_OUT_SZ,-(sp)
+	jsr		ZERO_ARRAY
+	addq.l	#6,sp
 
-_call_VDI:
-	move.l	#VDI_PARAM_BLOCK,d1
-	move.w	#VDI_OPCODE,d0
-	trap	#2
-	rts
-
+    move.w	#AES_RSRC_GADDR,AES_CONTROL
+	move.w	#0,AES_CONTROL+AES_CTRL_INT_IN
+	move.w	#1,AES_CONTROL+AES_CTRL_INT_OUT
+	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_IN
+	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_OUT
+	jsr		_call_AES
+    rts
 
 ;--------------------------------------		
 	 section bss
 ;--------------------------------------
 
-	even
-
 STR_BUFFER:             ds.b	128			
 
-	even
-
 APP_ID:					ds.w	1
-
-; AES Arrays
-
-AES_CONTROL:			ds.w	5
-AES_CONTROL_SZ			equ		5
-
-AES_GLOBAL:				ds.w	9
-AES_GLOBAL_SZ			equ		9
-
-AES_INT_OUT:			ds.w	8
-AES_INT_OUT_SZ			equ		8
-
-AES_INT_IN:				ds.w	18
-AES_INT_IN_SZ			equ		18
-
-AES_ADDR_IN:			ds.l	3
-AES_ADDR_IN_SZ			equ		3
-
-AES_ADDR_OUT:			ds.l	2
-AES_ADDR_OUT_SZ			equ		2
-
-AES_PHYS_HANDLE:		ds.w	1
-AES_BOX_W:				ds.w	1
-AES_BOX_H:				ds.w	1
-AES_CHAR_W:				ds.w	1
-AES_CHAR_H:				ds.w	1
-	
-AES_WINDOW_HANDLE:		ds.w	1
-AES_WIND_CREATE_RESULT:	ds.w	1
-	
-AES_MESSAGE:			ds.w	8
-AES_MESSAGE_SZ			equ		8
-
-; Window Dimensions
-
-WORK_X:					ds.w	1
-WORK_Y:					ds.w	1
-WORK_W:					ds.w	1
-WORK_H:					ds.w	1
-
-PREV_X:					ds.w	1
-PREV_Y:					ds.w	1
-PREV_W:					ds.w	1
-PREV_H:					ds.w	1
-
-FULL_X:					ds.w	1
-FULL_Y:					ds.w	1
-FULL_W:					ds.w	1
-FULL_H:					ds.w	1
-
-DESK_X:					ds.w	1
-DESK_Y:					ds.w	1
-DESK_W:					ds.w	1
-DESK_H:					ds.w	1
-
-; VDI Other
-
 SCREEN_RES:				ds.w	1
 IS_FULLED:              ds.w    1
-
-; VDI Arrays
-
-VDI_WK_HANDLE:			ds.w	1
-
-VDI_CONTROL:			ds.w	12
-VDI_CONTROL_SZ			equ		12
-
-VDI_ARRAY_SZ			equ		128
-
-VDI_INT_IN:				ds.w	128
-VDI_PTS_IN:				ds.w	128
-VDI_INT_OUT:			ds.w	128
-VDI_PTS_OUT:			ds.w	128
-
 
 ;--------------------------------------
 	section data
@@ -826,183 +840,56 @@ VDI_PTS_OUT:			ds.w	128
 ; Strings
 
 	even
-
 STR_WIND_CREATE_FAIL: 	
 	dc.b	13,"Failed to create window",0
 	
 	even
-
 STR_WIND_CREATE_SUCC:	
 	dc.b	13,"Created window!",0
 	
 	even
-
 STR_WINDOW_TITLE:
 	dc.b	"Ash's AES Masterpiece",0
 	
 	even
-
 STR_WINDOW_INFO:
 	dc.b	"Glorious Informaty",0
 	
 	even
-
 STR_AES_APPL_INIT_ERROR:
 	dc.b	13,"Error in appl_init",0
 	
 	even
-
 STR_VDI_OPNVWK_ERROR:
 	dc.b	13,"Error in opnvwk",0
 	
 	even
+STR_RESOURCE_FILE:
+    dc.b    "AES_APP.RSC",0
 
-; AES Parameter Vector
-
-AES_PARAM_BLOCK:	
-	dc.l	AES_CONTROL
-    dc.l    AES_GLOBAL
-	dc.l	AES_INT_IN
-    dc.l    AES_INT_OUT
-	dc.l	AES_ADDR_IN,AES_ADDR_OUT
-
-; VDI Parameter Vector	
-
-VDI_PARAM_BLOCK:
-	dc.l	VDI_CONTROL
-	dc.l	VDI_INT_IN
-    dc.l    VDI_PTS_IN
-	dc.l	VDI_INT_OUT
-    dc.l    VDI_PTS_OUT
-
-
-;--------------------------------------
-; AES Constants
-;--------------------------------------
-
-AES_ID					EQU		200
-AES_APPL_INIT			EQU 	10
-AES_APPL_EXIT			EQU		19
-AES_GRAF_HANDLE			EQU		77
-AES_GRAF_MOUSE			EQU		78
-AES_WIND_CREATE			EQU		100
-AES_WIND_OPEN			EQU 	101
-AES_WIND_CLOSE			EQU		102
-AES_WIND_DELETE			EQU		103
-AES_WIND_GET			EQU		104
-AES_WIND_SET			EQU		105
-AES_WIND_UPDATE         EQU     107
-
-; Global Array Offests
-
-AES_AP_VERSION 			EQU 	0
-AES_AP_COUNT			EQU 	2
-AES_AP_ID				EQU 	4
-AES_AP_PRIVATE			EQU 	6
-AES_AP_PTREE			EQU		10
-AES_AP_1RESV			EQU 	14
-AES_AP_2RESV			EQU		18
-AES_AP_3RESV			EQU		22
-AES_AP_4RESV			EQU		26
-
-; Control Array Offsets
-
-AES_CTRL_OPCODE			EQU		0
-AES_CTRL_INT_IN			EQU		2
-AES_CTRL_INT_OUT		EQU		4
-AES_CTRL_ADDR_IN		EQU		6
-AES_CTRL_ADDR_OUT		EQU		8
+	even
+STR_AES_RSRC_LOAD_FAILED: 	
+	dc.b	13,"Failed to load AES resource file",0
+	
+;-------------------------------------
+; Other Stuff
+;-------------------------------------
 
 ; Default Window Args
 
-AES_DEF_WINDOW_X 		EQU 	20
-AES_DEF_WINDOW_Y 		EQU 	20
-AES_DEF_WINDOW_W		EQU 	200
-AES_DEF_WINDOW_H		EQU 	200
-AES_DEF_WINDOW_FLAGS	EQU 	$2F
+DEF_WINDOW_X            EQU 20
+DEF_WINDOW_Y            EQU 20
+DEF_WINDOW_W            EQU 200
+DEF_WINDOW_H            EQU 200
+DEF_WINDOW_FLAGS        EQU $2F
 
-;--------------------------------------
-; VDI Constants
-;--------------------------------------
+BASE_PAGE_PTR           EQU 4       ; Stack offset to base page address
+CODE_SZ                 EQU 12      ; Base page offset to Code segment length
+DATA_SZ                 EQU 20      ; Base page offset to Data segment length n
+BSS_SZ                  EQU 28      ; Base page offset to BSS segment length
+STACK_SZ                EQU $400    ; size of our stack (IK)
+BASE_PAGE_SZ            EQU $100    ; size of base page
+FALSE                   EQU $FFFF
+TRUE                    EQU $1111
 
-VDI_CLRWK               EQU     3
-VDI_CURTEXT				EQU		5
-VDI_CURTEXT_SUB			EQU		12
-
-VDI_OPNVWK				EQU		100
-VDI_CLSWK               EQU     101
-VDI_OPCODE				EQU		115
-
-VSF_COLOR               EQU     25
-VR_RECFL                EQU     114
-HIDE_MOUSE              EQU     256
-SHOW_MOUSE              EQU     257
-
-; VDI contrl offsets
-
-VDI_CTRL_OPCODE			EQU		0
-VDI_CTRL_PTS_IN			EQU 	2
-VDI_CTRL_PTS_OUT		EQU		4
-VDI_CTRL_INT_IN			EQU		6
-VDI_CTRL_INT_OUT		EQU		8
-VDI_CTRL_SUB_FUNC		EQU		10
-VDI_CTRL_DEV_HANDLE		EQU		12
-
-;--------------------------------------
-; Events
-;--------------------------------------
-
-EVENT_MESSAG            EQU     23
-EVENT_MN_SELECTED		EQU 	10
-EVENT_WM_REDRAW			EQU		20
-EVENT_WM_TOPPED			EQU		21
-EVENT_WM_CLOSED			EQU		22
-EVENT_WM_FULLED			EQU		23
-EVENT_WM_ARROWED		EQU		24
-EVENT_WM_HSLID			EQU		25
-EVENT_WM_VSLID			EQU		26
-EVENT_WM_SIZED			EQU		27
-EVENT_WM_MOVED			EQU		28
-EVENT_WM_NEWTOP			EQU		29
-EVENT_AC_OPEN			EQU		40
-EVENT_AC_CLOSE			EQU		41
-
-;--------------------------------------
-; WF_STUFF
-;--------------------------------------
-
-WF_KIND					EQU		1
-WF_NAME					EQU		2
-WF_INFO					EQU		3
-WF_WORKXYWH				EQU		4
-WF_CURRXYWH				EQU		5
-WF_PREVXYWH				EQU		6
-WF_FULLXYWH				EQU		7
-
-END_UPDATE              EQU     0
-BEG_UPDATE              EQU     1
-
-NDC_COORDS              EQU     0
-RASTER_COORDS           EQU     2
-
-FALSE                   EQU     $FFFF
-TRUE                    EQU     $1111
-
-MOUSE_ARROW             EQU 0	;   Arrow
-MOUSE_TEXT_CRSR         EQU 1	;   Text cursor
-MOUSE_HOURGLASS         EQU 2	;   Hourglass, bee
-MOUSE_BUSY_BEE          EQU 2	;   See HOURGLASS
-MOUSE_BUSYBEE           EQU 2	;   See HOURGLASS
-MOUSE_POINT_HAND        EQU 3	;   Pointing hand
-MOUSE_FLAT_HAND         EQU 4	;   Flat hand
-MOUSE_THIN_CROSS        EQU 5	;   Thin crosshairs
-MOUSE_THICK_CROSS       EQU 6	;   Thick crosshairs
-MOUSE_OUTLN_CROSS       EQU 7	;   Outlined crosshairs
-
-;--------------------------------------
-;	Includes
-;--------------------------------------
-
-	include	"../INCDIR/ASCII.S"
-	include	"../INCDIR/GEMDOS.S"
-	include	"../INCDIR/XBIOS.S"
+   end

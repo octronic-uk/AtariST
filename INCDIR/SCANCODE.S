@@ -5,21 +5,21 @@
 ;   \/_/\/_/ \/_____/ \/_/\/_/ 
 ;      ash@octronic.co.uk      
 ;
-;   INPUT.S 
+;   SCANCODE.S 
 ;       Atari ST Keyboard, Mouse, Joystick Header
 ; Keyboard Scancodes
 
 ESC_SCANCODE            equ 1
-_1_SCANCODE              equ 2
-_2_SCANCODE              equ 3
-_3_SCANCODE              equ 4
-_4_SCANCODE              equ 5
-_5_SCANCODE              equ 6
-_6_SCANCODE              equ 7
-_7_SCANCODE              equ 8
-_8_SCANCODE              equ 9
-_9_SCANCODE              equ 10
-_0_SCANCODE              equ 11
+_1_SCANCODE             equ 2
+_2_SCANCODE             equ 3
+_3_SCANCODE             equ 4
+_4_SCANCODE             equ 5
+_5_SCANCODE             equ 6
+_6_SCANCODE             equ 7
+_7_SCANCODE             equ 8
+_8_SCANCODE             equ 9
+_9_SCANCODE             equ 10
+_0_SCANCODE             equ 11
 MINUS_SCANCODE          equ 12
 PLUS_SCANCODE           equ 13
 BACKSPACE_SCANCODE      equ 14
