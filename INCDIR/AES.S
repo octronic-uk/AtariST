@@ -5,7 +5,6 @@
 ;   \/_/\/_/ \/_____/ \/_/\/_/ 
 ;      ash@octronic.co.uk      
 ;
-
     section text
 
 _call_AES:
@@ -17,16 +16,8 @@ _call_AES:
 ;--------------------------------------
 ; AES Constants
 ;--------------------------------------
-    section bss
-
-; AES Parameter Vector
-
-AES_PARAM_BLOCK:	
-	dc.l	AES_CONTROL
-    dc.l    AES_GLOBAL
-	dc.l	AES_INT_IN
-    dc.l    AES_INT_OUT
-	dc.l	AES_ADDR_IN,AES_ADDR_OUT
+  
+  section bss  
 
 ; AES Arrays
 
@@ -70,6 +61,19 @@ AES_DESK_X:				ds.w	1
 AES_DESK_Y:				ds.w	1
 AES_DESK_W:				ds.w	1
 AES_DESK_H:				ds.w	1
+
+
+
+; AES Parameter Vector
+
+	section data
+
+AES_PARAM_BLOCK:	
+	dc.l	AES_CONTROL
+    dc.l    AES_GLOBAL
+	dc.l	AES_INT_IN
+    dc.l    AES_INT_OUT
+	dc.l	AES_ADDR_IN,AES_ADDR_OUT
 
 ;---------------------------------------
 ; Constants

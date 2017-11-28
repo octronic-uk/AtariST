@@ -5,7 +5,6 @@
 ;   \/_/\/_/ \/_____/ \/_/\/_/ 
 ;      ash@octronic.co.uk      
 ;
-
     section text
 
 _call_VDI:
@@ -14,7 +13,7 @@ _call_VDI:
 	trap	#2
 	rts
 
-    section bss
+    section data
 
 ; VDI Parameter Vector	
 
@@ -24,6 +23,8 @@ VDI_PARAM_BLOCK:
     dc.l    VDI_PTS_IN
 	dc.l	VDI_INT_OUT
     dc.l    VDI_PTS_OUT
+
+	section bss
 
 ; VDI Arrays
 

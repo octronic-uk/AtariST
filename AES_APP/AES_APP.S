@@ -8,15 +8,7 @@
 ;	AES_APP.S
 ;		Header for an AES Application
 
-;--------------------------------------
-;	Includes
-;--------------------------------------
 
-	include	"ASCII.S"
-	include	"AES.S"
-	include	"VDI.S"
-	include	"GEMDOS.S"
-	include	"XBIOS.S"
  
 ;--------------------------------------
 ; Application Starts Here
@@ -891,5 +883,15 @@ STACK_SZ                EQU $400    ; size of our stack (IK)
 BASE_PAGE_SZ            EQU $100    ; size of base page
 FALSE                   EQU $FFFF
 TRUE                    EQU $1111
+
+;--------------------------------------
+;	Includes
+;--------------------------------------
+
+	include	"ASCII.S"
+	include	"AES.S"
+	include	"VDI.S"
+	include	"GEMDOS.S"
+	include	"XBIOS.S"
 
    end

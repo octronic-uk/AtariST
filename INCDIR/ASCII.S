@@ -98,9 +98,9 @@ ASCII_W	            equ	$57
 ASCII_X	            equ	$58
 ASCII_Y	            equ	$59
 ASCII_Z	            equ	$5a
-ASCII_SQ_BRKT_L     equ	$5b
+ASCII_SQUARE_L  	equ	$5b
 ASCII_BACK_SLASH	equ	$5c
-ASCII_SQ_BRKT_R 	equ	$5d
+ASCII_SQUARE_R 		equ	$5d
 ASCII_CARAT	        equ	$5e
 ASCII_UNDERSCORE	equ	$5f
 ASCII_BACK_TICK 	equ	$60
