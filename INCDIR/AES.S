@@ -21,6 +21,7 @@ _call_AES:
 
 ; AES Arrays
 
+    even
 AES_CONTROL:			ds.w	5
 AES_GLOBAL:				ds.w	9
 AES_INT_OUT:			ds.w	8
@@ -38,7 +39,7 @@ AES_WINDOW_HANDLE:		ds.w	1
 AES_WIND_CREATE_RESULT:	ds.w	1
 AES_MESSAGE:			ds.w	8
 
-AES_MENU_PTR:           ds.w    1    
+AES_MENU_PTR:           ds.l    1    
 
 ; Window Dimensions
 
@@ -63,11 +64,11 @@ AES_DESK_W:				ds.w	1
 AES_DESK_H:				ds.w	1
 
 
-
 ; AES Parameter Vector
 
 	section data
 
+    even
 AES_PARAM_BLOCK:	
 	dc.l	AES_CONTROL
     dc.l    AES_GLOBAL
@@ -79,11 +80,21 @@ AES_PARAM_BLOCK:
 ; Constants
 ;---------------------------------------
 
-AES_ID                      EQU	200
+; Application
 AES_APPL_INIT               EQU 10
 AES_APPL_EXIT               EQU	19
+; Menu
+AES_MENU_BAR                EQU 30
+; Object
+AES_OBJC_DRAW               EQU 42
+; Form
+AES_FORM_DO                 EQU 50
+AES_FORM_DIAL               EQU 51
+AES_FORM_CENTER             EQU 54
+; Graphics
 AES_GRAF_HANDLE             EQU	77
 AES_GRAF_MOUSE              EQU	78
+; Window
 AES_WIND_CREATE             EQU	100
 AES_WIND_OPEN               EQU 101
 AES_WIND_CLOSE              EQU	102
@@ -91,9 +102,12 @@ AES_WIND_DELETE             EQU	103
 AES_WIND_GET                EQU	104
 AES_WIND_SET                EQU	105
 AES_WIND_UPDATE             EQU 107
+; Resource
 AES_RSRC_LOAD               EQU 110
 AES_RSRC_FREE               EQU 111
 AES_RSRC_GADDR              EQU 112
+; ID
+AES_ID                      EQU	200
 
 ; Global Array Offests
 
@@ -190,3 +204,14 @@ AES_RSRC_IBPTEXT            EQU 13  ; ib_ptext in ICONBLK
 AES_RSRC_BIPDATA            EQU 14  ; ib_pdate in BITBLK
 AES_RSRC_FRSTR              EQU 15  ; ad_frstr free string
 AES_RSRC_FRIMG              EQU 16  ; ad_frimg free image
+
+; Menu
+AES_MENU_HIDE               EQU 0
+AES_MENU_SHOW               EQU 1
+AES_MENU_INSTALL            EQU 100
+
+; Form
+AES_FMD_START               EQU 0
+AES_FMD_GROW                EQU 1
+AES_FMD_SHRINK              EQU 2
+AES_FMD_FINISH              EQU 3

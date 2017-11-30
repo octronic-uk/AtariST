@@ -48,7 +48,7 @@ VDI_CURTEXT                 EQU	5
 VDI_CURTEXT_SUB             EQU	12
 
 VDI_OPNVWK                  EQU	100
-VDI_CLSWK                   EQU 101
+VDI_CLSVWK                  EQU 101
 VDI_OPCODE                  EQU	115
 
 VDI_VSF_COLOR               EQU 25
