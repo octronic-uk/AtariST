@@ -87,6 +87,7 @@ AES_APPL_EXIT               EQU	19
 AES_MENU_BAR                EQU 30
 ; Object
 AES_OBJC_DRAW               EQU 42
+AES_OBJC_CHANGE             EQU 47
 ; Form
 AES_FORM_DO                 EQU 50
 AES_FORM_DIAL               EQU 51

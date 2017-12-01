@@ -363,10 +363,22 @@ AES_event_wm_redraw:
 	jsr		AES_wind_get_work_xywh
 	jsr		VDI_set_bg_white
 	jsr		VDI_fill_bg_rect
+    jsr     _set_form_position
+    jsr     AES_objc_draw
 	jsr		AES_wind_update_end
 	jsr		AES_graf_mouse_show
     jsr     AES_graf_mouse_arrow
 	rts
+
+_set_form_position:
+    movea.l FORM_PTR,a0
+    move.w  AES_WORK_X,(16,a0)
+    move.w  AES_WORK_Y,(18,a0)
+    move.w  AES_WORK_W,(20,a0)
+    ;addq.w  #1,(20,a0)
+    move.w  AES_WORK_H,(22,a0)
+    ;addq.w  #1,(22,a0)
+    rts
 
 AES_event_mn_selected:
     cmpi.w  #M_DESK,AES_MESSAGE+6
@@ -391,11 +403,11 @@ AES_event_mn_selected_desk_jsr_info:
 
 AES_event_mn_selected_desk_info:
     ; Display Form
-    jsr     AES_form_center
-    jsr     AES_form_dial_start
-    jsr     AES_objc_draw
-    jsr     AES_form_do
-    jsr     AES_form_dial_finish
+    ;jsr     AES_form_center
+    ;jsr     AES_form_dial_start
+    ;jsr     AES_objc_draw
+    ;jsr     AES_form_do
+    ;jsr     AES_form_dial_finish
     rts
 
 AES_event_mn_selected_file:
@@ -420,10 +432,12 @@ AES_objc_draw:
     ; AES_INT_IN
     move.w  #FORM_ROOT,AES_INT_IN
     move.w  #2,AES_INT_IN+2
-    move.w  FORM_CENTER_X,AES_INT_IN+4
-    move.w  FORM_CENTER_Y,AES_INT_IN+6
-    move.w  FORM_CENTER_W,AES_INT_IN+8
-    move.w  FORM_CENTER_H,AES_INT_IN+10
+
+    move.w  AES_WORK_X,AES_INT_IN+4
+    move.w  AES_WORK_Y,AES_INT_IN+6
+    move.w  AES_WORK_W,AES_INT_IN+8
+    move.w  AES_WORK_H,AES_INT_IN+10
+
     ; AES_ADDR_IN
     move.l  FORM_PTR,AES_ADDR_IN
     jsr     _call_AES
@@ -946,9 +960,9 @@ STR_AES_OBJC_DRAW_AFTER:
 
 DEF_WINDOW_X            EQU 20
 DEF_WINDOW_Y            EQU 20
-DEF_WINDOW_W            EQU 300
-DEF_WINDOW_H            EQU 200
-DEF_WINDOW_FLAGS        EQU $2F
+DEF_WINDOW_W            EQU 344
+DEF_WINDOW_H            EQU 250
+DEF_WINDOW_FLAGS        EQU $000B
 
 BASE_PAGE_PTR           EQU 4       ; Stack offset to base page address
 CODE_SZ                 EQU 12      ; Base page offset to Code segment length

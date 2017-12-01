@@ -37,4 +37,3 @@
 #define Z_BTN            27  /* BUTTON in tree FORM */
 #define ALL_BTN          28  /* BUTTON in tree FORM */
 #define INFO_BOX         29  /* BOX in tree FORM */
-#define QUIT_BTN         30  /* BUTTON in tree FORM */
