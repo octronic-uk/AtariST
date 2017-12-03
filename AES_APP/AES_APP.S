@@ -62,38 +62,54 @@ main:
 	jsr		AES_wind_open
     jsr     AES_show_menu_bar
 main_loop:
-	jsr		AES_event_messag
-main_check_sized:
+    jsr     AES_event_multi
+    move.w  AES_RETVAL,d0
+    btst.w  #AES_EVENT_MU_MESAG_BIT,d0
+    bne     main_check_msgs
+    btst.w  #AES_EVENT_MU_BUTTON_BIT,d0
+    bne     main_check_mouse_button
+    jmp     main_loop
+
+main_check_mouse_button:
+    ;pea     STR_MOUSE_BUTTON_MSG
+    ;jsr     DEBUG
+    ;addq.l  #4,sp
+    jsr     _handle_mouse_click 
+    jmp     main_loop
+
+main_check_msgs:
+main_check_msg_sized:
 	cmpi.w	#AES_EVENT_WM_SIZED,AES_MESSAGE
-	bne		main_check_redraw
+	bne		main_check_msg_redraw
 	jsr		AES_event_wm_sized
     jmp     main_loop
-main_check_redraw:
+main_check_msg_redraw:
 	cmpi.w	#AES_EVENT_WM_REDRAW,AES_MESSAGE
-	bne		main_check_moved
+	bne		main_check_msg_moved
 	jsr		AES_event_wm_redraw
     jmp     main_loop
-main_check_moved:
+main_check_msg_moved:
 	cmpi.w	#AES_EVENT_WM_MOVED,AES_MESSAGE
-	bne		main_check_fulled
+	bne		main_check_msg_fulled
 	jsr		AES_event_wm_moved
     jmp     main_loop
-main_check_fulled:
+main_check_msg_fulled:
 	cmpi.w	#AES_EVENT_WM_FULLED,AES_MESSAGE
-	bne		main_check_menu_selected
+	bne		main_check_msg_menu_selected
 	jsr		AES_wind_get_full_xywh
 	jsr		AES_event_wm_fulled
 	jsr		AES_wind_get_prev_xywh
     jmp     main_loop
-main_check_menu_selected:
+main_check_msg_menu_selected:
     cmpi.w  #AES_EVENT_MN_SELECTED,AES_MESSAGE
-    bne     main_check_close
+    bne     main_check_msg_close
     jsr     AES_event_mn_selected
     jmp     main_loop
-main_check_close:	
+main_check_msg_close:	
 	cmpi.w	#AES_EVENT_WM_CLOSED,AES_MESSAGE
 	beq		main_exit
 	jmp		main_loop
+
 main_exit:
 	jsr		AES_wind_close
     jsr     AES_hide_menu_bar
@@ -103,6 +119,34 @@ main_exit:
 	jsr		AES_appl_exit
 	move.w	#GEMDOS_PTERM0,-(sp)
 	trap	#TRAP_GEMDOS
+
+_handle_mouse_click:
+    jsr     AES_objc_find
+    jsr     _highlight_selected_object
+    rts
+
+_highlight_selected_object:
+    jsr     AES_zero_arrays
+    ; CONTROL
+    move.w  #AES_OBJC_CHANGE,AES_CONTROL
+    move.w  #8,AES_CONTROL+AES_CTRL_INT_IN
+    move.w  #1,AES_CONTROL+AES_CTRL_INT_OUT
+    move.w  #1,AES_CONTROL+AES_CTRL_ADDR_IN
+    move.w  #0,AES_CONTROL+AES_CTRL_ADDR_OUT
+    ; INT_IN
+    move.w  SELECTED_OBJECT,AES_INT_IN
+    move.w  #0,AES_INT_IN+2
+    move.w  AES_WORK_X,AES_INT_IN+4
+    move.w  AES_WORK_Y,AES_INT_IN+6
+    move.w  AES_WORK_W,AES_INT_IN+8
+    move.w  AES_WORK_H,AES_INT_IN+10
+    move.w  #1,AES_INT_IN+12
+    move.w  #1,AES_INT_IN+14
+    ; ADDR_IN
+    move.l  FORM_PTR,AES_ADDR_IN
+    ; Call
+    jsr     _call_AES
+    rts
 
 ZERO_ARRAY:
 	move.w	4(sp),d0	; size
@@ -295,6 +339,50 @@ AES_appl_exit:
 	jsr		_call_AES
 	rts
 
+AES_event_multi:
+    jsr     AES_zero_arrays
+    jsr     AES_zero_message
+    ; AES_CONTROL
+    move.w  #AES_EVENT_MULTI,AES_CONTROL
+    move.w  #16,AES_CONTROL+AES_CTRL_INT_IN
+    move.w  #7,AES_CONTROL+AES_CTRL_INT_OUT
+    move.w  #1,AES_CONTROL+AES_CTRL_ADDR_IN
+    move.w  #0,AES_CONTROL+AES_CTRL_ADDR_OUT
+    ; AES_INT_IN
+    move.w  #AES_EVENT_MULTI_FLAGS,AES_INT_IN
+    ; Mouse
+    move.w  #1,AES_INT_IN+2 ; 1 click
+    move.w  #1,AES_INT_IN+4 ; Mouse button 1
+    move.w  #1,AES_INT_IN+6 ; mb1 pressed
+    ; Rectangle 1
+    move.w  #0,AES_INT_IN+8
+    move.w  #0,AES_INT_IN+10
+    move.w  #0,AES_INT_IN+12
+    move.w  #0,AES_INT_IN+14
+    move.w  #0,AES_INT_IN+16
+    ; Recrangle 2
+    move.w  #0,AES_INT_IN+18
+    move.w  #0,AES_INT_IN+20
+    move.w  #0,AES_INT_IN+22
+    move.w  #0,AES_INT_IN+24
+    move.w  #0,AES_INT_IN+26
+    ; Timer
+    move.w  #0,AES_INT_IN+28
+    move.w  #0,AES_INT_IN+30
+    ; AES_ADDR_IN
+    move.l  #AES_MESSAGE,AES_ADDR_IN
+    ; Make call
+    jsr     _call_AES
+    ; AES_INT_OUT
+    move.w  AES_INT_OUT,AES_RETVAL
+    move.w  AES_INT_OUT+2,EV_MMOX 
+    move.w  AES_INT_OUT+4,EV_MMOY
+    move.w  AES_INT_OUT+6,EV_MMBUTTON
+    move.w  AES_INT_OUT+8,EV_MMOKSTATE 
+    move.w  AES_INT_OUT+10,EV_MKRETURN
+    move.w  AES_INT_OUT+12,EV_MBRETURN
+    rts
+
 AES_event_messag:
     jsr     AES_zero_arrays
 	move.w	#AES_EVENT_MESSAG,AES_CONTROL
@@ -370,14 +458,54 @@ AES_event_wm_redraw:
     jsr     AES_graf_mouse_arrow
 	rts
 
+AES_rsrc_objfix:
+    jsr     AES_zero_arrays
+    ; CONTROL
+    move.w  #AES_RSRC_OBJFIX,AES_CONTROL
+    move.w  #1,AES_CONTROL+AES_CTRL_INT_IN
+    move.w  #1,AES_CONTROL+AES_CTRL_INT_OUT
+    move.w  #1,AES_CONTROL+AES_CTRL_ADDR_IN
+    move.w  #0,AES_CONTROL+AES_CTRL_ADDR_OUT
+    ; INT_IN
+    move.w  #FORM_ROOT,AES_INT_IN
+    ; ADDR_IN
+    move.l  FORM_PTR,AES_ADDR_IN
+    ; Call
+    jsr     _call_AES
+    rts
+
+AES_rsrc_rcfix:
+    rts
+
 _set_form_position:
     movea.l FORM_PTR,a0
     move.w  AES_WORK_X,(16,a0)
     move.w  AES_WORK_Y,(18,a0)
     move.w  AES_WORK_W,(20,a0)
-    ;addq.w  #1,(20,a0)
     move.w  AES_WORK_H,(22,a0)
-    ;addq.w  #1,(22,a0)
+
+    jsr     AES_zero_arrays
+    ; CONTROL
+    move.w  #AES_OBJC_CHANGE,AES_CONTROL
+    move.w  #8,AES_CONTROL+AES_CTRL_INT_IN
+    move.w  #1,AES_CONTROL+AES_CTRL_INT_OUT
+    move.w  #1,AES_CONTROL+AES_CTRL_ADDR_IN
+    move.w  #0,AES_CONTROL+AES_CTRL_ADDR_OUT
+    ; INT_IN
+    move.w  #FORM_ROOT,AES_INT_IN
+    move.w  #0,AES_INT_IN+2
+    move.w  AES_WORK_X,AES_INT_IN+4
+    move.w  AES_WORK_Y,AES_INT_IN+6
+    move.w  AES_WORK_W,AES_INT_IN+8
+    move.w  AES_WORK_H,AES_INT_IN+10
+    move.w  #0,AES_INT_IN+12
+    move.w  #1,AES_INT_IN+14
+    ; ADDR_IN
+    move.l  FORM_PTR,AES_ADDR_IN
+    ; Call
+    jsr     _call_AES
+    rts
+    jsr     AES_rsrc_objfix
     rts
 
 AES_event_mn_selected:
@@ -402,12 +530,6 @@ AES_event_mn_selected_desk_jsr_info:
     rts
 
 AES_event_mn_selected_desk_info:
-    ; Display Form
-    ;jsr     AES_form_center
-    ;jsr     AES_form_dial_start
-    ;jsr     AES_objc_draw
-    ;jsr     AES_form_do
-    ;jsr     AES_form_dial_finish
     rts
 
 AES_event_mn_selected_file:
@@ -432,12 +554,10 @@ AES_objc_draw:
     ; AES_INT_IN
     move.w  #FORM_ROOT,AES_INT_IN
     move.w  #2,AES_INT_IN+2
-
     move.w  AES_WORK_X,AES_INT_IN+4
     move.w  AES_WORK_Y,AES_INT_IN+6
     move.w  AES_WORK_W,AES_INT_IN+8
     move.w  AES_WORK_H,AES_INT_IN+10
-
     ; AES_ADDR_IN
     move.l  FORM_PTR,AES_ADDR_IN
     jsr     _call_AES
@@ -447,6 +567,27 @@ AES_objc_draw:
 AES_objc_draw_failed:
     pea     STR_AES_OBJC_DRAW_FAILED
     jsr     FATAL_ERROR
+
+AES_objc_find:
+    jsr     AES_zero_arrays
+    move.w  #-1,SELECTED_OBJECT
+    ; Control
+    move.w  #AES_OBJC_FIND,AES_CONTROL
+    move.w  #4,AES_CONTROL+AES_CTRL_INT_IN
+    move.w  #1,AES_CONTROL+AES_CTRL_INT_OUT
+    move.w  #1,AES_CONTROL+AES_CTRL_ADDR_IN
+    move.w  #1,AES_CONTROL+AES_CTRL_ADDR_OUT
+    ; Int In
+    move.w  #FORM_ROOT,AES_INT_IN   ; Start at form root
+    move.w  #7,AES_INT_IN+2         ; Search 7 generations
+    move.w  EV_MMOX,AES_INT_IN+4
+    move.w  EV_MMOY,AES_INT_IN+6
+    ; Addr In
+    move.l  FORM_PTR,AES_ADDR_IN
+    ; Call
+    jsr     _call_AES
+    move.w  AES_INT_OUT,SELECTED_OBJECT
+    rts
 
 AES_form_center:
     jsr     AES_zero_arrays
@@ -869,6 +1010,14 @@ AES_zero_global:
 	addq.l	#6,sp
     rts
 
+AES_zero_message:
+    move.w  #15,d0
+    lea     AES_MESSAGE,a0
+_AES_zero_message_next:
+    move.w  #0,(a0)+ 
+    dbra    d0,_AES_zero_message_next
+    rts
+
 ;--------------------------------------		
 	 section bss
 ;--------------------------------------
@@ -883,6 +1032,15 @@ FORM_CENTER_X:          ds.w    1
 FORM_CENTER_Y:          ds.w    1
 FORM_CENTER_W:          ds.w    1
 FORM_CENTER_H:          ds.w    1
+
+EV_MMOX:                ds.w    1
+EV_MMOY:                ds.w    1
+EV_MMBUTTON:            ds.w    1
+EV_MMOKSTATE:           ds.w    1
+EV_MKRETURN:            ds.w    1
+EV_MBRETURN:            ds.w    1
+
+SELECTED_OBJECT:        ds.w    1
 
 ;--------------------------------------
 	section data
@@ -900,7 +1058,7 @@ STR_WIND_CREATE_SUCC:
 	
 	even
 STR_WINDOW_TITLE:
-	dc.b	"Ash's AES App",ASCII_NUL
+	dc.b	"Ash's HD Luncher",ASCII_NUL
 	
 	even
 STR_WINDOW_INFO:
@@ -950,7 +1108,9 @@ STR_AES_OBJC_DRAW_BEFORE:
 STR_AES_OBJC_DRAW_AFTER: 	
 	dc.b	ASCII_CR,"After call to draw AES form",ASCII_NUL
 
-
+    even
+STR_MOUSE_BUTTON_MSG:
+    dc.b    ASCII_CR,"Mouse Button Event",ASCII_NUL
 
 ;-------------------------------------
 ; Other Stuff

@@ -34,10 +34,11 @@ AES_BOX_W:				ds.w	1
 AES_BOX_H:				ds.w	1
 AES_CHAR_W:				ds.w	1
 AES_CHAR_H:				ds.w	1
+AES_RETVAL:             ds.w    1
 	
 AES_WINDOW_HANDLE:		ds.w	1
 AES_WIND_CREATE_RESULT:	ds.w	1
-AES_MESSAGE:			ds.w	8
+AES_MESSAGE:			ds.b	16
 
 AES_MENU_PTR:           ds.l    1    
 
@@ -83,10 +84,14 @@ AES_PARAM_BLOCK:
 ; Application
 AES_APPL_INIT               EQU 10
 AES_APPL_EXIT               EQU	19
+; EVENT
+AES_EVENT_MESSAG            EQU 23
+AES_EVENT_MULTI             EQU 25
 ; Menu
 AES_MENU_BAR                EQU 30
 ; Object
 AES_OBJC_DRAW               EQU 42
+AES_OBJC_FIND               EQU 43
 AES_OBJC_CHANGE             EQU 47
 ; Form
 AES_FORM_DO                 EQU 50
@@ -107,6 +112,8 @@ AES_WIND_UPDATE             EQU 107
 AES_RSRC_LOAD               EQU 110
 AES_RSRC_FREE               EQU 111
 AES_RSRC_GADDR              EQU 112
+AES_RSRC_OBJFIX             EQU 114
+AES_RSRC_RCFIX              EQU 115
 ; ID
 AES_ID                      EQU	200
 
@@ -143,7 +150,6 @@ AES_ADDR_OUT_SZ             EQU	2
 
 ; Events
 
-AES_EVENT_MESSAG            EQU 23
 AES_EVENT_MN_SELECTED		EQU 10
 AES_EVENT_WM_REDRAW			EQU	20
 AES_EVENT_WM_TOPPED			EQU	21
@@ -157,6 +163,34 @@ AES_EVENT_WM_MOVED			EQU	28
 AES_EVENT_WM_NEWTOP			EQU	29
 AES_EVENT_AC_OPEN			EQU	40
 AES_EVENT_AC_CLOSE			EQU	41
+
+AES_EVENT_MU_KEYBD          EQU $0001 ; Keybord event 
+AES_EVENT_MU_BUTTON         EQU $0002 ; Button event 
+AES_EVENT_MU_M1             EQU $0004 ; Mouse event 1 
+AES_EVENT_MU_M2             EQU $0008 ; Mouse event 2 
+AES_EVENT_MU_MESAG          EQU $0010 ; Messages 
+AES_EVENT_MU_TIMER          EQU $0020 ; Timer events 
+AES_EVENT_MU_WHEEL          EQU $0040 ; Mouse-wheel, XaAES 
+AES_EVENT_MU_MX             EQU $0080 ; Mouse movement, XaAES 
+AES_EVENT_MU_KEYBD4         EQU $0100 ; GEM/4 
+AES_EVENT_MU_NORM_KEYBD     EQU $0100 ; Normalized key-codes, XaAES 
+AES_EVENT_MU_DYNAMIC_KEYBD  EQU $0200 ; XaAES, not yet implemented 
+AES_EVENT_X_MU_DIALOG       EQU $4000 ; (Geneva)
+
+AES_EVENT_MU_KEYBD_BIT          EQU 0  ; Keybord event 
+AES_EVENT_MU_BUTTON_BIT         EQU 1  ; Button event 
+AES_EVENT_MU_M1_BIT             EQU 2  ; Mouse event 1 
+AES_EVENT_MU_M2_BIT             EQU 3  ; Mouse event 2 
+AES_EVENT_MU_MESAG_BIT          EQU 4  ; Messages 
+AES_EVENT_MU_TIMER_BIT          EQU 5  ; Timer events 
+AES_EVENT_MU_WHEEL_BIT          EQU 6  ; Mouse-wheel, XaAES 
+AES_EVENT_MU_MX_BIT             EQU 7  ; Mouse movement, XaAES 
+AES_EVENT_MU_KEYBD4_BIT         EQU 8  ; GEM/4 
+AES_EVENT_MU_NORM_KEYBD_BIT     EQU 8  ; Normalized key-codes, XaAES 
+AES_EVENT_MU_DYNAMIC_KEYBD_BIT  EQU 9 ; XaAES, not yet implemented 
+AES_EVENT_X_MU_DIALOG_BIT       EQU 12 ; (Geneva)
+
+AES_EVENT_MULTI_FLAGS       EQU $1F   ; AES_EVENT_MU_KEYBD + AES_EVENT_MU_BUTTON + AES+EVENT_MU_M1 + AES_EVENT_MU_M2 + AES_EVENT_MU_MESAG 
 
 ; WF_STUFF
 
