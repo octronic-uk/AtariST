@@ -82,3 +82,82 @@ LINEA_SCRPT2            equ 112 ;   Index in buffer
 LINEA_TEXT_BG           equ 114 ;   Unused                       
 LINEA_COPY_TRAN         equ 116 ;   --                           
 LINEA_FILL_ABORT        equ 118 ;   Tests seedfill               
+
+;---------------------------------------
+; Line-A Negative Offsets
+;---------------------------------------
+LINEA_N_RESERVED6    EQU    -$38E   ; Reserved                     
+LINEA_N_CUR_FONT     EQU    -$38A   ; Pointer->current font header 
+LINEA_N_RESERVED5    EQU    -$386   ; Reserved                     
+LINEA_N_M_POS_HX     EQU    -$358   ; X-coordinate mouse hot-spot  
+LINEA_N_M_POS_HY     EQU    -$356   ; Y-coordinate mouse hot-spot  
+LINEA_N_M_PLANES     EQU    -$354   ; Write mode for mouse pointer 
+                                    ;   1=Replace, -1=XOR mode       
+LINEA_N_M_CDB_BG     EQU    -$352   ; Mouse pointer backgr. colour 
+LINEA_N_M_CDB_FG     EQU    -$350   ; Mouse pointer foregr. colour 
+LINEA_N_MASK_FORM    EQU    -$34E   ; Mouse ptr. foregr. and mask  
+                                    ;   Alternately 1 WORD           
+                                    ;   foreground and mask          
+LINEA_N_INQ_TAB      EQU    -$30E   ; As vq_extnd                  
+LINEA_N_DEV_TAB      EQU    -$2B4   ; As v_opnwk                   
+LINEA_N_GCURX        EQU    -$25A   ; Curr. mouse pointer X-posn.  
+LINEA_N_GCURY        EQU    -$258   ; Curr. mouse pointer Y-posn.  
+LINEA_N_M_HID_CT     EQU    -$256   ; Number of hide_mouse-calls   
+LINEA_N_MOUSE_BT     EQU    -$254   ; Current mouse button status  
+LINEA_N_REQ_COL      EQU    -$252   ; Internal data for vq_color   
+LINEA_N_SIZ_TAB      EQU    -$1F2   ; As v_opnwk                   
+LINEA_N_CUR_WORK     EQU    -$1D0   ; Attributes current workstn.  
+LINEA_N_DEF_FONT     EQU    -$1CC   ; Standard system font         
+LINEA_N_FONT_RING    EQU    -$1C8   ; System and GDOS font lists   
+                                    ;   Chained FONT_HDR structures  
+                                    ;   0 as terminator ID           
+LINEA_N_FONT_COUNT   EQU    -$1B8   ; Total number of fonts        
+LINEA_N_CUR_MS_STAT  EQU    -$15C   ; Mouse status since last      
+                                    ;   Bit 0;    Left button (0=up) 
+                                    ;   Bit 1;    Right button (0=up)
+                                    ;   Bit 2..4; Reserved           
+                                    ;   Bit 5;    1=Mouse moved      
+                                    ;   Bit 6;    1=State of right   
+                                    ;             button changed     
+                                    ;   Bit 7;    1=State of left    
+                                    ;             button changed     
+LINEA_N_V_HID_CNT      EQU  -$15A   ; Number of Hide_cursor calls  
+LINEA_N_CUR_X          EQU  -$158   ; X-position for mouse pointer 
+LINEA_N_CUR_Y          EQU  -$156   ; Y-position for mouse pointer 
+LINEA_N_CUR_FLAG       EQU  -$154   ; != 0; Redraw mouse ptr.in VBL
+LINEA_N_MOUSE_FLAG     EQU  -$153   ; != 0; Mouse interrupt on     
+LINEA_N_V_SAV_XY       EQU  -$14E   ; X-Y coordinates saved by VT52
+LINEA_N_SAVE_LEN       EQU  -$14A   ; Number of screen lines       
+LINEA_N_SAVE_ADDR      EQU  -$148   ; First bufered byte in screen 
+                                    ;   memory                       
+LINEA_N_SAVE_STAT      EQU   -$144  ; Dirty flag                   
+                                    ;   Bit 0; 1=Buffer is valid     
+                                    ;   Bit 1; 1=Long, 0=Word bufferd
+LINEA_N_SAVE_AREA      EQU   -$142  ; Buffer for image under mouse 
+LINEA_N_USER_TIM       EQU   -$42   ; Timer interrupt vector       
+                                    ;   To terminate should jump to  
+                                    ;   next_tim                     
+LINEA_N_NEXT_TIM       EQU   -$3E   ; Old timer interrupt          
+LINEA_N_USER_BUT       EQU   -$3A   ; Mouse button vector          
+LINEA_N_USER_CUR       EQU   -$36   ; Mouse rendering vector       
+LINEA_N_USER_MOT       EQU   -$32   ; Mouse movement vector        
+LINEA_N_V_CEL_HT       EQU   -$2E   ; Current text cell height     
+LINEA_N_V_CEL_MX       EQU   -$2C   ; Maximum column for cursor    
+LINEA_N_V_CEL_MY       EQU   -$2A   ; Maximum line for cursor      
+LINEA_N_V_CEL_WR       EQU   -$28   ; Bytes betwn. character cells 
+LINEA_N_V_COL_BG       EQU   -$26   ; Text background colour       
+LINEA_N_V_COL_FG       EQU   -$24   ; Text foreground colour       
+LINEA_N_V_CUR_AD       EQU   -$22   ; Address of cursor position   
+LINEA_N_V_CUR_OFF      EQU   -$1E   ; Vertical screen offset       
+LINEA_N_V_CUR_XY       EQU   -$1C   ; X-Y position of text cursor  
+LINEA_N_V_PERIOD       EQU   -$18   ; Current cursor blink rate    
+LINEA_N_V_CUR_CT       EQU   -$17   ; Countdown timer for blink    
+LINEA_N_V_FNT_AD       EQU   -$16   ; Addr. of monospace font data 
+LINEA_N_V_FNT_ND       EQU   -$12   ; Last ASCII code in font      
+LINEA_N_V_FNT_ST       EQU   -$10   ; First ASCII code in font     
+LINEA_N_V_FNT_WD       EQU   -$E    ; Width of font form in bytes  
+LINEA_N_V_REZ_HZ       EQU   -$C    ; Horizontal pixel resolution  
+LINEA_N_V_OFF_AD       EQU   -$A    ; Address of font offset table 
+LINEA_N_RESERVED       EQU   -$6    ; Cursorflag (TOS 1.00)/res.   
+LINEA_N_V_REZ_VT       EQU   -$4    ; Vertical pixel resolution    
+LINEA_N_BYTES_LIN      EQU   -$2    ; Bytes per screen line        
