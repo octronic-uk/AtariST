@@ -1,6 +1,6 @@
 
 	section text
-
+	
 memory_init:                            ; Set base page address in a5
     move.l a7,a5                        ; Save a7 so we can get the base page address 
     move.l BASE_PAGE_PTR(a5),a5         ; a5 = basepage addressk

@@ -9,6 +9,21 @@
 ;   XBIOS.S 
 ;       Atari ST XBIOS Function List
 
+    section text
+
+XB_get_screen_res:
+	move.w	#XBIOS_GETRES,-(sp)
+	trap	#TRAP_XBIOS
+	addq.l	#2,sp
+	addq.w	#2,d0					; Add 2 to correct res
+	move.w	d0,XB_SCREEN_RES
+	rts
+
+
+    section bss
+
+XB_SCREEN_RES:		ds.w	1
+
 TRAP_XBIOS          equ $0E
 
 ;-----------------------------

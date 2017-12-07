@@ -1,39 +1,46 @@
+/* Resource file indices for LAUNCH. */
 
-MENU        EQU 0   ; Menu-tree 
-M_DESK      EQU 3   ; TITLE in tree MENU 
-M_FILE      EQU 4   ; TITLE in tree MENU 
-M_DESK_INFO EQU 7   ; STRING in tree MENU 
-M_FILE_QUIT EQU 16  ; STRING in tree MENU 
+#define MAIN             0   /* Form/Dialog-box */
+#define FORM_ROOT        0   /* BOX in tree MAIN */
+#define NUM_BTN          1   /* BUTTON in tree MAIN */
+#define A_BTN            2   /* BUTTON in tree MAIN */
+#define B_BTN            3   /* BUTTON in tree MAIN */
+#define C_BTN            4   /* BUTTON in tree MAIN */
+#define D_BTN            5   /* BUTTON in tree MAIN */
+#define E_BTN            6   /* BUTTON in tree MAIN */
+#define F_BTN            7   /* BUTTON in tree MAIN */
+#define G_BTN            8   /* BUTTON in tree MAIN */
+#define H_BTN            9   /* BUTTON in tree MAIN */
+#define I_BTN            10  /* BUTTON in tree MAIN */
+#define J_BTN            11  /* BUTTON in tree MAIN */
+#define K_BTN            12  /* BUTTON in tree MAIN */
+#define L_BTN            13  /* BUTTON in tree MAIN */
+#define M_BTN            14  /* BUTTON in tree MAIN */
+#define N_BTN            15  /* BUTTON in tree MAIN */
+#define O_BTN            16  /* BUTTON in tree MAIN */
+#define P_BTN            17  /* BUTTON in tree MAIN */
+#define Q_BTN            18  /* BUTTON in tree MAIN */
+#define R_BTN            19  /* BUTTON in tree MAIN */
+#define S_BTN            20  /* BUTTON in tree MAIN */
+#define T_BTN            21  /* BUTTON in tree MAIN */
+#define U_BTN            22  /* BUTTON in tree MAIN */
+#define V_BTN            23  /* BUTTON in tree MAIN */
+#define W_BTN            24  /* BUTTON in tree MAIN */
+#define X_BTN            25  /* BUTTON in tree MAIN */
+#define Y_BTN            26  /* BUTTON in tree MAIN */
+#define Z_BTN            27  /* BUTTON in tree MAIN */
+#define ALL_BTN          28  /* BUTTON in tree MAIN */
+#define ADD_BTN          29  /* BUTTON in tree MAIN */
+#define QUIT_BTN         30  /* BUTTON in tree MAIN */
+#define LIST_BOX         31  /* BOX in tree MAIN */
+#define RM_BTN           32  /* BUTTON in tree MAIN */
+#define SAVE_BTN         33  /* BUTTON in tree MAIN */
 
-FORM        EQU 1   ; Form/Dialog-box 
-FORM_ROOT   EQU 0   ; BOX in tree FORM 
-NUM_BTN     EQU 1   ; BUTTON in tree FORM 
-A_BTN       EQU 2   ; BUTTON in tree FORM 
-B_BTN       EQU 3   ; BUTTON in tree FORM 
-C_BTN       EQU 4   ; BUTTON in tree FORM 
-D_BTN       EQU 5   ; BUTTON in tree FORM 
-E_BTN       EQU 6   ; BUTTON in tree FORM 
-F_BTN       EQU 7   ; BUTTON in tree FORM 
-G_BTN       EQU 8   ; BUTTON in tree FORM 
-H_BTN       EQU 9   ; BUTTON in tree FORM 
-I_BTN       EQU 10  ; BUTTON in tree FORM 
-J_BTN       EQU 11  ; BUTTON in tree FORM 
-K_BTN       EQU 12  ; BUTTON in tree FORM 
-L_BTN       EQU 13  ; BUTTON in tree FORM 
-M_BTN       EQU 14  ; BUTTON in tree FORM 
-N_BTN       EQU 15  ; BUTTON in tree FORM 
-O_BTN       EQU 16  ; BUTTON in tree FORM 
-P_BTN       EQU 17  ; BUTTON in tree FORM 
-Q_BTN       EQU 18  ; BUTTON in tree FORM 
-R_BTN       EQU 19  ; BUTTON in tree FORM 
-S_BTN       EQU 20  ; BUTTON in tree FORM 
-T_BTN       EQU 21  ; BUTTON in tree FORM 
-U_BTN       EQU 22  ; BUTTON in tree FORM 
-V_BTN       EQU 23  ; BUTTON in tree FORM 
-W_BTN       EQU 24  ; BUTTON in tree FORM 
-X_BTN       EQU 25  ; BUTTON in tree FORM 
-Y_BTN       EQU 26  ; BUTTON in tree FORM 
-Z_BTN       EQU 27  ; BUTTON in tree FORM 
-ALL_BTN     EQU 28  ; BUTTON in tree FORM 
-CONF_BTN    EQU 29  ; BUTTON in tree FORM 
-QUIT_BTN    EQU 30  ; BUTTON in tree FORM 
+#define NEW_ITEM         1   /* Form/Dialog-box */
+#define NEW_ITEM_ROOT    0   /* BOX in tree NEW_ITEM */
+#define OK_BTN           1   /* BUTTON in tree NEW_ITEM */
+#define CANCEL_BTN       2   /* BUTTON in tree NEW_ITEM */
+#define EXEC_TXT         3   /* TEXT in tree NEW_ITEM */
+#define FSEL_BTN         4   /* BUTTON in tree NEW_ITEM */
+#define EXEC_STR         5   /* TEXT in tree NEW_ITEM */
+#define NAME_TXT         6   /* FTEXT in tree NEW_ITEM */

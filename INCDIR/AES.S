@@ -7,12 +7,14 @@
 ;
     section text
 
+;   jsr     call_aes
 call_aes:
 	move.l	#AES_PARAM_BLOCK,d1
 	move.l	#AES_ID,d0
 	trap	#2
 	rts
 
+;   jsr     AES_zero_arrays
 AES_zero_arrays:
     pea		AES_CONTROL
 	move.w	#AES_CONTROL_SZ,-(sp)
@@ -36,6 +38,7 @@ AES_zero_arrays:
 	addq.l	#6,sp
     rts
 
+;   jsr     AES_zero_global
 AES_zero_global:
     pea		AES_GLOBAL
 	move.w	#AES_GLOBAL_SZ,-(sp)
@@ -43,6 +46,7 @@ AES_zero_global:
 	addq.l	#6,sp
     rts
 
+;   jsr     ASE_zero_message
 AES_zero_message:
     move.w  #15,d0
     lea     AES_MESSAGE,a0
@@ -51,7 +55,7 @@ AES_zero_message:
     dbra    d0,.AES_zero_message_next
     rts
 
-
+;   jsr     AES_appl_init
 AES_appl_init:
     jsr     AES_zero_arrays
     jsr     AES_zero_global
@@ -60,10 +64,11 @@ AES_appl_init:
 	move.w	#1,AES_CONTROL+AES_CTRL_INT_OUT
 	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_IN
 	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_OUT
-	jsr		_call_AES
-	move.w	AES_INT_OUT,APP_ID
+	jsr		call_aes
+	move.w	AES_INT_OUT,AES_APP_ID
 	rts
 
+;   jsr     AES_appl_exit
 AES_appl_exit:
     jsr     AES_zero_arrays
 	move.w	#AES_APPL_EXIT,AES_CONTROL
@@ -71,9 +76,10 @@ AES_appl_exit:
 	move.w	#1,AES_CONTROL+AES_CTRL_INT_OUT
 	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_IN
 	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_OUT
-	jsr		_call_AES
+	jsr		call_aes
 	rts
 
+;   jsr     AES_event_multi
 AES_event_multi:
     jsr     AES_zero_arrays
     jsr     AES_zero_message
@@ -107,17 +113,17 @@ AES_event_multi:
     ; AES_ADDR_IN
     move.l  #AES_MESSAGE,AES_ADDR_IN
     ; Make call
-    jsr     _call_AES
+    jsr     call_aes
     ; AES_INT_OUT
-    move.w  AES_INT_OUT,AES_RETVAL
-    move.w  AES_INT_OUT+2,EV_MMOX 
-    move.w  AES_INT_OUT+4,EV_MMOY
-    move.w  AES_INT_OUT+6,EV_MMBUTTON
-    move.w  AES_INT_OUT+8,EV_MMOKSTATE 
-    move.w  AES_INT_OUT+10,EV_MKRETURN
-    move.w  AES_INT_OUT+12,EV_MBRETURN
+    move.w  AES_INT_OUT+2,AES_EV_MMOX 
+    move.w  AES_INT_OUT+4,AES_EV_MMOY
+    move.w  AES_INT_OUT+6,AES_EV_MMBUTTON
+    move.w  AES_INT_OUT+8,AES_EV_MMOKSTATE 
+    move.w  AES_INT_OUT+10,AES_EV_MKRETURN
+    move.w  AES_INT_OUT+12,AES_EV_MBRETURN
     rts
 
+;   jsr     AES_event_messag
 AES_event_messag:
     jsr     AES_zero_arrays
 	move.w	#AES_EVENT_MESSAG,AES_CONTROL
@@ -126,10 +132,11 @@ AES_event_messag:
 	move.w	#1,AES_CONTROL+AES_CTRL_ADDR_IN
 	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_OUT
 	move.l	#AES_MESSAGE,AES_ADDR_IN
-	jsr		_call_AES
+	jsr		call_aes
 	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_IN
 	rts
 
+;   jsr     AES_event_wm_sized
 AES_event_wm_sized:
     jsr     AES_zero_arrays
 	move.w	#AES_WIND_SET,AES_CONTROL
@@ -140,33 +147,35 @@ AES_event_wm_sized:
 	move.w	AES_MESSAGE+10,AES_INT_IN+6
 	move.w	AES_MESSAGE+12,AES_INT_IN+8
 	move.w	AES_MESSAGE+14,AES_INT_IN+10
-	jsr		_call_AES
+	jsr		call_aes
 	rts
 
+;   jsr     AES_event_wm_fulled
 AES_event_wm_fulled:
     jsr     AES_zero_arrays
 	move.w	#AES_WIND_SET,AES_CONTROL
 	move.w	#6,AES_CONTROL+AES_CTRL_INT_IN
 	move.w	AES_MESSAGE+6,AES_INT_IN
 	move.w	#AES_WF_CURRXYWH,AES_INT_IN+2
-    cmpi.w  #FALSE,IS_FULLED
+    cmpi.w  #FALSE,AES_IS_FULLED
     bne     AES_event_wm_fulled_unfull
 	move.w	AES_DESK_X,AES_INT_IN+4
 	move.w	AES_DESK_Y,AES_INT_IN+6
 	move.w	AES_DESK_W,AES_INT_IN+8
 	move.w	AES_DESK_H,AES_INT_IN+10
-    move.w  #TRUE,IS_FULLED
+    move.w  #TRUE,AES_IS_FULLED
     jmp     AES_event_wm_fulled_apply
 AES_event_wm_fulled_unfull:
     move.w	AES_PREV_X,AES_INT_IN+4
 	move.w	AES_PREV_Y,AES_INT_IN+6
 	move.w	AES_PREV_W,AES_INT_IN+8
 	move.w	AES_PREV_H,AES_INT_IN+10
-    move.w  #FALSE,IS_FULLED
+    move.w  #FALSE,AES_IS_FULLED
 AES_event_wm_fulled_apply:
-	jsr		_call_AES
+	jsr		call_aes
 	rts
 
+;   jsr     AES_event_wm_moved
 AES_event_wm_moved:
     jsr     AES_zero_arrays
 	move.w	#AES_WIND_SET,AES_CONTROL
@@ -177,22 +186,13 @@ AES_event_wm_moved:
 	move.w	AES_MESSAGE+10,AES_INT_IN+6
 	move.w	AES_MESSAGE+12,AES_INT_IN+8
 	move.w	AES_MESSAGE+14,AES_INT_IN+10
-	jsr		_call_AES
+	jsr		call_aes
 	rts
 
-AES_event_wm_redraw:		
-	jsr		AES_graf_mouse_hide
-	jsr		AES_wind_update_begin
-	jsr		AES_wind_get_work_xywh
-	jsr		VDI_set_bg_white
-	jsr		VDI_fill_bg_rect
-    jsr     _set_form_position
-    jsr     AES_objc_draw
-	jsr		AES_wind_update_end
-	jsr		AES_graf_mouse_show
-    jsr     AES_graf_mouse_arrow
-	rts
-
+;   pea     TreePtr        (6)
+;   move.w  ObjectID,-(sp) (4)
+;   jsr     AES_rsrc_objfix
+;   addq.l  #6,sp
 AES_rsrc_objfix:
     jsr     AES_zero_arrays
     ; CONTROL
@@ -202,18 +202,13 @@ AES_rsrc_objfix:
     move.w  #1,AES_CONTROL+AES_CTRL_ADDR_IN
     move.w  #0,AES_CONTROL+AES_CTRL_ADDR_OUT
     ; INT_IN
-    move.w  #FORM_ROOT,AES_INT_IN
+    move.w  4(sp),AES_INT_IN
     ; ADDR_IN
-    move.l  FORM_PTR,AES_ADDR_IN
+    move.l  6(sp),AES_ADDR_IN
     ; Call
-    jsr     _call_AES
+    jsr     call_aes
     rts
 
-AES_rsrc_rcfix:
-    rts
-
-; Arguments
-;
 ; pea       ObjectAddress   (14)
 ; move.w    ObjectID,-(sp)  (12)
 ; move.w    X,-(sp)         (10)
@@ -222,7 +217,6 @@ AES_rsrc_rcfix:
 ; move.w    H,-(sp)         (4)
 ; jsr       AES_objc_draw
 ; add.l     #14,sp
-;
 AES_objc_draw:
     jsr     AES_zero_arrays
     ; AES_CONTROL
@@ -240,17 +234,16 @@ AES_objc_draw:
     move.w  4(sp),AES_INT_IN+10
     ; AES_ADDR_IN
     move.l  14(sp),AES_ADDR_IN
-    jsr     _call_AES
-    cmpi.w  #0,AES_INT_OUT
-    beq     AES_objc_draw_failed
+    jsr     call_aes
     rts
-AES_objc_draw_failed:
-    pea     STR_AES_OBJC_DRAW_FAILED
-    jsr     FATAL_ERROR
 
+;   pea     TreePointer         10
+;   move.w  #OBJECT_ID,-(sp)    8
+;   move.w  #X_POS,-(sp)        6
+;   move.w  #Y_POS,-(sp)        4
+;   jsr     AES_objc_find
 AES_objc_find:
     jsr     AES_zero_arrays
-    move.w  #-1,SELECTED_OBJECT
     ; Control
     move.w  #AES_OBJC_FIND,AES_CONTROL
     move.w  #4,AES_CONTROL+AES_CTRL_INT_IN
@@ -258,17 +251,19 @@ AES_objc_find:
     move.w  #1,AES_CONTROL+AES_CTRL_ADDR_IN
     move.w  #1,AES_CONTROL+AES_CTRL_ADDR_OUT
     ; Int In
-    move.w  #FORM_ROOT,AES_INT_IN   ; Start at form root
-    move.w  #7,AES_INT_IN+2         ; Search 7 generations
-    move.w  EV_MMOX,AES_INT_IN+4
-    move.w  EV_MMOY,AES_INT_IN+6
+    move.w  8(sp),AES_INT_IN  
+    move.w  #7,AES_INT_IN+2     ; Search 7 generations
+    move.w  6(sp),AES_INT_IN+4
+    move.w  4(sp),AES_INT_IN+6
     ; Addr In
-    move.l  FORM_PTR,AES_ADDR_IN
+    move.l  10(sp),AES_ADDR_IN
     ; Call
-    jsr     _call_AES
-    move.w  AES_INT_OUT,SELECTED_OBJECT
+    jsr     call_aes
     rts
 
+;   pea     TreePointer
+;   jsr     AES_form_center
+;   addq.l  #4,sp
 AES_form_center:
     jsr     AES_zero_arrays
     ; AES_CONTROL
@@ -278,15 +273,17 @@ AES_form_center:
     move.w  #1,AES_CONTROL+AES_CTRL_ADDR_IN
     move.w  #0,AES_CONTROL+AES_CTRL_ADDR_OUT
     ; AES_ADDR_IN
-    move.l  FORM_PTR,AES_ADDR_IN
-    jsr     _call_AES
-    ; AES_INT_OUT
-    move.w  AES_INT_OUT+2,FORM_CENTER_X
-    move.w  AES_INT_OUT+4,FORM_CENTER_Y
-    move.w  AES_INT_OUT+6,FORM_CENTER_W
-    move.w  AES_INT_OUT+8,FORM_CENTER_H
+    move.l  4(sp),AES_ADDR_IN
+    jsr     call_aes
+    
     rts
 
+;   move.w  X,-(sp) 10
+;   move.w  Y,-(sp) 8
+;   move.w  W,-(sp) 6
+;   move.w  H,-(sp) 4
+;   jsr     AES_form_dial_start
+;   addq.l  #10,sp
 AES_form_dial_start:
     jsr     AES_zero_arrays
     ; AES_CONTROL
@@ -301,13 +298,19 @@ AES_form_dial_start:
     move.w  #0,AES_INT_IN+4
     move.w  #0,AES_INT_IN+6
     move.w  #0,AES_INT_IN+8
-    move.w  FORM_CENTER_X,AES_INT_IN+10
-    move.w  FORM_CENTER_Y,AES_INT_IN+12
-    move.w  FORM_CENTER_W,AES_INT_IN+14
-    move.w  FORM_CENTER_H,AES_INT_IN+16
-    jsr     _call_AES
+    move.w  10(sp),AES_INT_IN+10
+    move.w  8(sp),AES_INT_IN+12
+    move.w  6(sp),AES_INT_IN+14
+    move.w  4(sp),AES_INT_IN+16
+    jsr     call_aes
     rts
 
+;   move.w  X,-(sp) 10
+;   move.w  Y,-(sp) 8
+;   move.w  W,-(sp) 6
+;   move.w  H,-(sp) 4
+;   jsr     AES_form_dial_start
+;   addq.l  #10,sp
 AES_form_dial_finish:
     jsr     AES_zero_arrays
     ; AES_CONTROL
@@ -322,13 +325,16 @@ AES_form_dial_finish:
     move.w  #0,AES_INT_IN+4
     move.w  #0,AES_INT_IN+6
     move.w  #0,AES_INT_IN+8
-    move.w  FORM_CENTER_X,AES_INT_IN+10
-    move.w  FORM_CENTER_Y,AES_INT_IN+12
-    move.w  FORM_CENTER_W,AES_INT_IN+14
-    move.w  FORM_CENTER_H,AES_INT_IN+16
-    jsr     _call_AES
+    move.w  10(sp),AES_INT_IN+10
+    move.w  8(sp),AES_INT_IN+12
+    move.w  6(sp),AES_INT_IN+14
+    move.w  4(sp),AES_INT_IN+16
+    jsr     call_aes
     rts
 
+;   pea     TreePointer
+;   jsr     AES_form_do
+;   addq.l  #4,sp
 AES_form_do:
     jsr     AES_zero_arrays
     ; AES_CONTROL
@@ -340,10 +346,11 @@ AES_form_do:
     ; AES_INT_IN
     move.w  #0,AES_INT_IN
     ; AES_ADDR_IN
-    move.l  FORM_PTR,AES_ADDR_IN
-    jsr     _call_AES
+    move.l  4(sp),AES_ADDR_IN
+    jsr     call_aes
     rts
 
+;   jsr AES_wind_update_begin
 AES_wind_update_begin:
     jsr     AES_zero_arrays
 	move.w	#AES_WIND_UPDATE,AES_CONTROL
@@ -352,9 +359,10 @@ AES_wind_update_begin:
 	move.w	#1,AES_CONTROL+AES_CTRL_INT_IN
 	move.w	#1,AES_CONTROL+AES_CTRL_INT_OUT
 	move.w	#AES_BEG_UPDATE,AES_INT_IN
-	jsr		_call_AES
+	jsr		call_aes
 	rts
 
+;   jsr AES_wind_update_end
 AES_wind_update_end:	
     jsr     AES_zero_arrays
 	move.w	#AES_WIND_UPDATE,AES_CONTROL
@@ -363,9 +371,10 @@ AES_wind_update_end:
 	move.w	#1,AES_CONTROL+AES_CTRL_INT_IN
 	move.w	#1,AES_CONTROL+AES_CTRL_INT_OUT
 	move.w	#AES_END_UPDATE,AES_INT_IN
-	jsr		_call_AES
+	jsr		call_aes
 	rts
 
+;   jsr AES_graf_mouse_arrow
 AES_graf_mouse_arrow:
     jsr     AES_zero_arrays
 	move.w	#AES_GRAF_MOUSE,AES_CONTROL
@@ -374,9 +383,10 @@ AES_graf_mouse_arrow:
 	move.w	#1,AES_CONTROL+AES_CTRL_INT_IN
 	move.w	#1,AES_CONTROL+AES_CTRL_INT_OUT
 	move.w	#AES_MOUSE_ARROW,AES_INT_IN
-	jsr		_call_AES
+	jsr		call_aes
 	rts
 	
+;   jsr AES_graf_mouse_hide
 AES_graf_mouse_hide:
     jsr     AES_zero_arrays
 	move.w	#AES_GRAF_MOUSE,AES_CONTROL
@@ -385,9 +395,10 @@ AES_graf_mouse_hide:
 	move.w	#1,AES_CONTROL+AES_CTRL_INT_IN
 	move.w	#1,AES_CONTROL+AES_CTRL_INT_OUT
 	move.w	#VDI_HIDE_MOUSE,AES_INT_IN
-	jsr		_call_AES
+	jsr		call_aes
 	rts
 	
+;   jsr AES_graf_mouse_show
 AES_graf_mouse_show:
     jsr     AES_zero_arrays
 	move.w	#AES_GRAF_MOUSE,AES_CONTROL
@@ -396,9 +407,10 @@ AES_graf_mouse_show:
 	move.w	#1,AES_CONTROL+AES_CTRL_INT_IN
 	move.w	#1,AES_CONTROL+AES_CTRL_INT_OUT
 	move.w	#VDI_SHOW_MOUSE,AES_INT_IN
-	jsr		_call_AES
+	jsr		call_aes
 	rts
 
+;   jsr  AES_graf_handle
 AES_graf_handle:
     jsr     AES_zero_arrays
 	move.w	#AES_GRAF_HANDLE,AES_CONTROL
@@ -406,7 +418,7 @@ AES_graf_handle:
 	move.w	#5,AES_CONTROL+AES_CTRL_INT_OUT
 	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_IN
 	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_OUT
-	jsr		_call_AES
+	jsr		call_aes
 	move.w	AES_INT_OUT,AES_PHYS_HANDLE	
 	move.w	AES_INT_OUT+2,AES_CHAR_W
 	move.w	AES_INT_OUT+4,AES_CHAR_H
@@ -414,6 +426,13 @@ AES_graf_handle:
 	move.w	AES_INT_OUT+8,AES_BOX_H
 	rts
 
+;   move.w  WindowFlags,-(sp)   12
+;   move.w  X,-(sp)             10
+;   move.w  Y,-(sp)             8
+;   move.w  W,-(sp)             6
+;   move.w  H,-(sp)             4
+;   jsr     AES_wind_create
+;   addq.l  #
 AES_wind_create:	
     jsr     AES_zero_arrays
 	move.w	#AES_WIND_CREATE,AES_CONTROL
@@ -421,31 +440,40 @@ AES_wind_create:
 	move.w	#1,AES_CONTROL+AES_CTRL_INT_OUT
 	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_IN
 	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_OUT
-	move.w	#DEF_WINDOW_FLAGS,AES_INT_IN
-	move.w	AES_DESK_X,AES_INT_IN+2
-	move.w	AES_DESK_Y,AES_INT_IN+4
-	move.w	AES_DESK_W,AES_INT_IN+6
-	move.w	AES_DESK_H,AES_INT_IN+8
-	jsr		_call_AES
+	move.w	12(sp),AES_INT_IN
+	move.w	10(sp),AES_INT_IN+2
+	move.w	8(sp),AES_INT_IN+4
+	move.w	6(sp),AES_INT_IN+6
+	move.w	4(sp),AES_INT_IN+8
+	jsr		call_aes
 	move.w	AES_INT_OUT,AES_WINDOW_HANDLE
 	rts
 
+;   move.w  X,-(sp) 10
+;   move.w  Y,-(sp) 8
+;   move.w  W,-(sp) 6
+;   move.w  H,-(sp) 4
+;   jsr     AES_wind_open
+;   addq.l  #10,sp
 AES_wind_open:	
     jsr     AES_zero_arrays
-    move.w  #FALSE,IS_FULLED
+    move.w  #FALSE,AES_IS_FULLED
 	move.w	#AES_WIND_OPEN,AES_CONTROL
 	move.w	#5,AES_CONTROL+AES_CTRL_INT_IN
 	move.w	#1,AES_CONTROL+AES_CTRL_INT_OUT
 	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_IN
 	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_OUT
 	move.w	AES_WINDOW_HANDLE,AES_INT_IN
-	move.w	#DEF_WINDOW_X,AES_INT_IN+2
-	move.w	#DEF_WINDOW_Y,AES_INT_IN+4
-	move.w	#DEF_WINDOW_W,AES_INT_IN+6
-	move.w	#DEF_WINDOW_H,AES_INT_IN+8
-	jsr		_call_AES
+	move.w	10(sp),AES_INT_IN+2
+	move.w	8(sp),AES_INT_IN+4
+	move.w	6(sp),AES_INT_IN+6
+	move.w	4(sp),AES_INT_IN+8
+	jsr		call_aes
 	rts
 
+;   pea     STR_WINDOW_TITLE
+;   jsr     AES_wind_set_title 
+;   addq.l  #4,sp
 AES_wind_set_title:
     jsr     AES_zero_arrays
 	move.w	#AES_WIND_SET,AES_CONTROL
@@ -455,12 +483,15 @@ AES_wind_set_title:
 	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_OUT
 	move.w	AES_WINDOW_HANDLE,AES_INT_IN	
 	move.w	#AES_WF_NAME,AES_INT_IN+2
-	move.l	#STR_WINDOW_TITLE,AES_INT_IN+4
+	move.l	4(sp),AES_INT_IN+4
 	move.w	#0,AES_INT_IN+8
 	move.w	#0,AES_INT_IN+10
-	jsr		_call_AES
+	jsr		call_aes
 	rts
 	
+;   pea     STR_WINDOW_TITLE
+;   jsr     AES_wind_set_info
+;   addq.l  #4,sp
 AES_wind_set_info:
     jsr     AES_zero_arrays
 	move.w	#AES_WIND_SET,AES_CONTROL
@@ -470,12 +501,13 @@ AES_wind_set_info:
 	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_OUT
 	move.w	AES_WINDOW_HANDLE,AES_INT_IN	
 	move.w	#AES_WF_INFO,AES_INT_IN+2
-	move.l	#STR_WINDOW_INFO,AES_INT_IN+4
+	move.l	4(sp),AES_INT_IN+4
 	move.w	#0,AES_INT_IN+8
 	move.w	#0,AES_INT_IN+10
-	jsr		_call_AES
+	jsr		call_aes
 	rts
 
+;   jsr AES_wind_close
 AES_wind_close:	
     jsr     AES_zero_arrays
 	move.w	#AES_WIND_CLOSE,AES_CONTROL
@@ -484,9 +516,10 @@ AES_wind_close:
 	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_IN
 	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_OUT
 	move.w	AES_WINDOW_HANDLE,AES_INT_IN
-	jsr		_call_AES
+	jsr		call_aes
 	rts
 	
+;   jsr     AES_wind_delete
 AES_wind_delete:
     jsr     AES_zero_arrays
 	move.w	#AES_WIND_DELETE,AES_CONTROL
@@ -495,9 +528,10 @@ AES_wind_delete:
 	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_IN
 	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_OUT
 	move.w	AES_WINDOW_HANDLE,AES_INT_IN
-	jsr		_call_AES
+	jsr		call_aes
 	rts
 	
+;   jsr AES_wind_get_work_xywh
 AES_wind_get_work_xywh:
     jsr     AES_zero_arrays
 	move.w	#AES_WIND_GET,AES_CONTROL
@@ -507,7 +541,7 @@ AES_wind_get_work_xywh:
 	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_OUT
 	move.w	AES_WINDOW_HANDLE,AES_INT_IN
 	move.w	#AES_WF_WORKXYWH,AES_INT_IN+2
-	jsr		_call_AES
+	jsr		call_aes
 	move.w	AES_INT_OUT+2,AES_WORK_X
 	move.w	AES_INT_OUT+4,AES_WORK_Y
 	move.w	AES_INT_OUT+6,AES_WORK_W
@@ -516,6 +550,7 @@ AES_wind_get_work_xywh:
     subq.w  #1,AES_WORK_H
 	rts
 
+;   jsr     AES_wind_get_prev_xywh
 AES_wind_get_prev_xywh:
     jsr     AES_zero_arrays
 	move.w	#AES_WIND_GET,AES_CONTROL
@@ -525,13 +560,14 @@ AES_wind_get_prev_xywh:
 	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_OUT
 	move.w	AES_WINDOW_HANDLE,AES_INT_IN
 	move.w	#AES_WF_PREVXYWH,AES_INT_IN+2
-	jsr		_call_AES
+	jsr		call_aes
 	move.w	AES_INT_OUT+2,AES_PREV_X
 	move.w	AES_INT_OUT+4,AES_PREV_Y
 	move.w	AES_INT_OUT+6,AES_PREV_W
 	move.w	AES_INT_OUT+8,AES_PREV_H	
 	rts
 
+;   jsr     AES_wind_get_full_xywh
 AES_wind_get_full_xywh:
     jsr     AES_zero_arrays
 	move.w	#AES_WIND_GET,AES_CONTROL
@@ -541,13 +577,14 @@ AES_wind_get_full_xywh:
 	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_OUT
 	move.w	AES_WINDOW_HANDLE,AES_INT_IN
 	move.w	#AES_WF_FULLXYWH,AES_INT_IN+2
-	jsr		_call_AES
+	jsr		call_aes
 	move.w	AES_INT_OUT+2,AES_FULL_X
 	move.w	AES_INT_OUT+4,AES_FULL_Y
 	move.w	AES_INT_OUT+6,AES_FULL_W
 	move.w	AES_INT_OUT+8,AES_FULL_H
 	rts
 
+;   jsr     AES_wind_get_desk_xywh
 AES_wind_get_desk_xywh:
     jsr     AES_zero_arrays
 	move.w	#AES_WIND_GET,AES_CONTROL
@@ -557,13 +594,16 @@ AES_wind_get_desk_xywh:
 	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_OUT
 	move.w	#0,AES_INT_IN
 	move.w	#AES_WF_WORKXYWH,AES_INT_IN+2
-	jsr		_call_AES
+	jsr		call_aes
 	move.w	AES_INT_OUT+2,AES_DESK_X
 	move.w	AES_INT_OUT+4,AES_DESK_Y
 	move.w	AES_INT_OUT+6,AES_DESK_W
 	move.w	AES_INT_OUT+8,AES_DESK_H
 	rts
 
+;   pea     STR_RESOURCE_FILE
+;   jsr     AES_rsrc_load
+;   addq.l  #4,sp
 AES_rsrc_load:
     jsr     AES_zero_arrays
 	move.w	#AES_RSRC_LOAD,AES_CONTROL
@@ -571,15 +611,11 @@ AES_rsrc_load:
 	move.w	#1,AES_CONTROL+AES_CTRL_INT_OUT
 	move.w	#1,AES_CONTROL+AES_CTRL_ADDR_IN
 	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_OUT
-	move.l  #STR_RESOURCE_FILE,AES_ADDR_IN
-	jsr		_call_AES
-    cmpi.w  #0,AES_INT_OUT
-    beq     _AES_rscs_load_error
+	move.l  4(sp),AES_ADDR_IN
+	jsr		call_aes
     rts
-_AES_rscs_load_error:
-    pea     STR_AES_RSRC_LOAD_FAILED
-    jsr     FATAL_ERROR
 
+;   jsr     AES_rsrc_free
 AES_rsrc_free:
     jsr     AES_zero_arrays
     move.w	#AES_RSRC_FREE,AES_CONTROL
@@ -587,45 +623,28 @@ AES_rsrc_free:
 	move.w	#1,AES_CONTROL+AES_CTRL_INT_OUT
 	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_IN
 	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_OUT
-	jsr		_call_AES
+	jsr		call_aes
     rts
 
-AES_rsrc_get_menu_ptr:
+;   move.w  #INDEX          6 
+;   move.w  #TYPE           4
+;   jsr     AES_rsrc_get_ptr
+;   addq.l  #4,sp 
+AES_rsrc_gaddr:
     jsr     AES_zero_arrays
     move.w	#AES_RSRC_GADDR,AES_CONTROL
 	move.w	#2,AES_CONTROL+AES_CTRL_INT_IN
 	move.w	#1,AES_CONTROL+AES_CTRL_INT_OUT
 	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_IN
 	move.w	#1,AES_CONTROL+AES_CTRL_ADDR_OUT
-    move.w  #AES_RSRC_TREE,AES_INT_IN
-    move.w  #MENU,AES_INT_IN+2
-	jsr		_call_AES
-    cmpi.w  #0,AES_INT_OUT
-    beq     AES_rsrc_get_menu_ptr_failed
-    move.l  AES_ADDR_OUT,AES_MENU_PTR
+    move.w  4(sp),AES_INT_IN
+    move.w  6(sp),AES_INT_IN+2
+	jsr		call_aes
     rts
-AES_rsrc_get_menu_ptr_failed:
-    pea     STR_AES_GET_MENU_PTR_FAILED
-    jsr     FATAL_ERROR
 
-AES_rsrc_get_form_ptr:
-    jsr     AES_zero_arrays
-    move.w	#AES_RSRC_GADDR,AES_CONTROL
-	move.w	#2,AES_CONTROL+AES_CTRL_INT_IN
-	move.w	#1,AES_CONTROL+AES_CTRL_INT_OUT
-	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_IN
-	move.w	#1,AES_CONTROL+AES_CTRL_ADDR_OUT
-    move.w  #AES_RSRC_TREE,AES_INT_IN
-    move.w  #FORM,AES_INT_IN+2
-	jsr		_call_AES
-    cmpi.w  #0,AES_INT_OUT
-    beq     AES_rsrc_get_form_ptr_failed
-    move.l  AES_ADDR_OUT,FORM_PTR
-    rts
-AES_rsrc_get_form_ptr_failed:
-    pea     STR_AES_GET_FORM_PTR_FAILED
-    jsr     FATAL_ERROR
-
+;   pea     MenuPointer         4
+;   jsr     AES_show_menu_bar
+;   addq.l  #4,sp
 AES_show_menu_bar:
     jsr     AES_zero_arrays
     move.w	#AES_MENU_BAR,AES_CONTROL
@@ -635,14 +654,12 @@ AES_show_menu_bar:
 	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_OUT
     move.w  #AES_MENU_SHOW,AES_INT_IN
     move.l  AES_MENU_PTR,AES_ADDR_IN
-    jsr     _call_AES
-    cmpi.w  #0,AES_INT_OUT
-    beq     AES_show_menu_bar_failed
+    jsr     call_aes
     rts
-AES_show_menu_bar_failed:
-    pea     STR_AES_SHOW_MENU_FAILED
-    jsr     FATAL_ERROR
 
+;   pea     MenuPointer         4
+;   jsr     AES_hide_menu_bar
+;   addq.l  #4,sp
 AES_hide_menu_bar:
     jsr     AES_zero_arrays
     move.w	#AES_MENU_BAR,AES_CONTROL
@@ -651,16 +668,27 @@ AES_hide_menu_bar:
 	move.w	#1,AES_CONTROL+AES_CTRL_ADDR_IN
 	move.w	#0,AES_CONTROL+AES_CTRL_ADDR_OUT
     move.w  #AES_MENU_HIDE,AES_INT_IN
-    move.l  AES_MENU_PTR,AES_ADDR_IN
-    jsr     _call_AES
-    cmpi.w  #0,AES_INT_OUT
-    beq     AES_hide_menu_bar_failed
+    move.l  4(sp),AES_ADDR_IN
+    jsr     call_aes
     rts
-AES_hide_menu_bar_failed:
-    pea     STR_AES_HIDE_MENU_FAILED
-    jsr     FATAL_ERROR
 
-
+;   pea PATH_BUFFER
+;   pea FILE_BUFFER
+;   jsr AES_fsel_input
+;   addq.l  #8,sp
+AES_fsel_input:
+    jsr     AES_zero_arrays
+    ; Control
+    move.w  #AES_FSEL_INPUT,AES_CONTROL
+    move.w  #0,AES_CONTROL+AES_CTRL_INT_IN
+    move.w  #2,AES_CONTROL+AES_CTRL_INT_OUT
+    move.w  #2,AES_CONTROL+AES_CTRL_ADDR_IN
+    move.w  #0,AES_CONTROL+AES_CTRL_ADDR_OUT
+    ; Addr in
+    move.l  8(sp),AES_ADDR_IN
+    move.l  4(sp),AES_ADDR_IN+4
+    jsr     call_aes
+    rts
 ;--------------------------------------
 ; AES Constants
 ;--------------------------------------
@@ -682,7 +710,6 @@ AES_BOX_W:				ds.w	1
 AES_BOX_H:				ds.w	1
 AES_CHAR_W:				ds.w	1
 AES_CHAR_H:				ds.w	1
-AES_RETVAL:             ds.w    1
 	
 AES_WINDOW_HANDLE:		ds.w	1
 AES_WIND_CREATE_RESULT:	ds.w	1
@@ -712,6 +739,15 @@ AES_DESK_Y:				ds.w	1
 AES_DESK_W:				ds.w	1
 AES_DESK_H:				ds.w	1
 
+AES_APP_ID:             ds.w    1
+
+AES_EV_MMOX:            ds.w    1
+AES_EV_MMOY:            ds.w    1
+AES_EV_MMBUTTON:        ds.w    1
+AES_EV_MMOKSTATE:       ds.w    1
+AES_EV_MKRETURN:        ds.w    1
+AES_EV_MBRETURN:        ds.w    1
+AES_IS_FULLED:          ds.w    1
 
 ; AES Parameter Vector
 
@@ -748,6 +784,8 @@ AES_FORM_CENTER             EQU 54
 ; Graphics
 AES_GRAF_HANDLE             EQU	77
 AES_GRAF_MOUSE              EQU	78
+; File Selector
+AES_FSEL_INPUT              EQU 90
 ; Window
 AES_WIND_CREATE             EQU	100
 AES_WIND_OPEN               EQU 101

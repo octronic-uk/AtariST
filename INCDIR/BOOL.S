@@ -1,2 +1,2 @@
-FALSE                   EQU $FFFF
-TRUE                    EQU $1111
+FALSE	EQU $FFFF
+TRUE	EQU $1111

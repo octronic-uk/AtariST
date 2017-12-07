@@ -17,13 +17,7 @@ call_vdi:
 	trap	#2
 	rts
 
-VDI_get_screen_res:
-	move.w	#XBIOS_GETRES,-(sp)
-	trap	#TRAP_XBIOS
-	addq.l	#2,sp
-	addq.w	#2,d0					; Add 2 to correct res
-	move.w	d0,VDI_SCREEN_RES
-	rts
+
 	
 ; Sets VDI_WK_HANDLE
 VDI_opnvwk:
@@ -31,13 +25,13 @@ VDI_opnvwk:
 	move.w	#VDI_OPNVWK,VDI_CONTROL
 	move.w	#11,VDI_CONTROL+VDI_CTRL_INT_IN
 	move.w	#0,VDI_CONTROL+VDI_CTRL_PTS_IN
-	move.w	AES_PHYS_HANDLE(sp),VDI_CONTROL+VDI_CTRL_DEV_HANDLE
+	move.w	AES_PHYS_HANDLE,VDI_CONTROL+VDI_CTRL_DEV_HANDLE
 	lea		VDI_INT_IN,a0
 	move.w	#9,d0
 .VDI_opnvwk_int_in_init_loop:
 	move.w	#1,(a0)+
 	dbra	d0,.VDI_opnvwk_int_in_init_loop
-	move.w	VDI_SCREEN_RES,VDI_INT_IN
+	move.w	XB_SCREEN_RES,VDI_INT_IN
 	move.w	#VDI_RASTER_COORDS,VDI_INT_IN+20
 	jsr		call_vdi
 	move.w	VDI_CONTROL+VDI_CTRL_DEV_HANDLE,VDI_WK_HANDLE
@@ -136,17 +130,12 @@ VDI_PARAM_BLOCK:
 
 ; VDI Arrays
 
-VDI_WK_HANDLE:			ds.w	1
-
-VDI_CONTROL:			ds.w	12
-
-
-VDI_INT_IN:				ds.w	128
-VDI_PTS_IN:				ds.w	128
-VDI_INT_OUT:			ds.w	128
-VDI_PTS_OUT:			ds.w	128
-
-VDI_SCREEN_RES:				ds.w	1
+VDI_WK_HANDLE:		ds.w	1
+VDI_CONTROL:		ds.w	12
+VDI_INT_IN:			ds.w	128
+VDI_PTS_IN:			ds.w	128
+VDI_INT_OUT:		ds.w	128
+VDI_PTS_OUT:		ds.w	128
 
 ;--------------------------------------
 ; VDI Constants

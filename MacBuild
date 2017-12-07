@@ -4,7 +4,7 @@ PROJECT=$1
 ASM_EXT="S"
 OUTPUT_EXT="PRG"
 ASSEMBLER="vasmm68k-mot"
-FLAGS="-no-opt -Ftos -devpac"
+FLAGS="-no-opt -Ftos -devpac -monst"
 INCLUDE="-I../INCDIR/"
 
 echo "Building ${PROJECT}"

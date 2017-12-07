@@ -1,6 +1,6 @@
 
     section text
-
+    
 FATAL_ERROR:
 	move.l	4(sp),-(sp)	
 	move.w	#GEMDOS_CCONWS,-(sp)
