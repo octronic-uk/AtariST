@@ -59,6 +59,14 @@ app_main:
     cmpi.w  #0,AES_INT_OUT
     beq     main_exit
     move.l  AES_ADDR_OUT,NEW_ITEM_TREE_PTR
+    ; Get Address of NameTxt TEDINFO
+    move.w  #NAME_TXT,-(sp)
+    move.w  #AES_RSRC_TEDINFO,-(sp)
+    jsr     AES_rsrc_gaddr
+    addq.l  #4,sp
+    cmpi.w  #0,AES_INT_OUT
+    beq     main_exit
+    move.l  AES_ADDR_OUT,NAME_TXT_TEDINFO_PTR
     ; Set mouse to arrow (from bee)
     jsr     AES_graf_mouse_arrow
 
@@ -91,8 +99,9 @@ main_form_open:
 main_form_loop:
     ; hand over to form_do
     move.l  MAIN_FORM_TREE_PTR,-(sp)
+    move.w  #0,-(sp)
     jsr     AES_form_do
-    addq.l  #4,sp
+    addq.l  #6,sp
     move.w  AES_INT_OUT,d0
     ; process result
     jsr     handle_main_form_do_result
@@ -181,103 +190,161 @@ handle_main_form_do_result:
     beq     handle_main_save_btn
     cmpi.w  #QUIT_BTN,d0
     beq     main_exit
-handle_main_form_do_result_done:
     rts
 
 handle_main_all_btn:
-    jmp handle_main_form_do_result_done
+    move.w  #ASCII_ASTERISK,SELECTED_LETTER
+    rts
 
 handle_main_a_btn:
-    jmp  handle_main_form_do_result_done 
+    move.w  #ASCII_A,SELECTED_LETTER
+    rts 
 
 handle_main_b_btn:
-    jmp  handle_main_form_do_result_done 
+    move.w  #ASCII_B,SELECTED_LETTER
+    rts 
 
 handle_main_c_btn:
-    jmp  handle_main_form_do_result_done 
+    move.w  #ASCII_C,SELECTED_LETTER
+    rts 
 
 handle_main_d_btn:
-    jmp  handle_main_form_do_result_done 
+    move.w  #ASCII_D,SELECTED_LETTER
+    rts 
 
 handle_main_e_btn:
-    jmp  handle_main_form_do_result_done 
+    move.w  #ASCII_E,SELECTED_LETTER
+    rts 
 
 handle_main_f_btn:
-    jmp  handle_main_form_do_result_done 
+    move.w  #ASCII_F,SELECTED_LETTER
+    rts 
 
 handle_main_g_btn:
-    jmp  handle_main_form_do_result_done 
+    move.w  #ASCII_G,SELECTED_LETTER
+    rts 
 
 handle_main_h_btn:
-    jmp  handle_main_form_do_result_done 
+    move.w  #ASCII_H,SELECTED_LETTER
+    rts 
 
 handle_main_i_btn:
-    jmp  handle_main_form_do_result_done 
+    move.w  #ASCII_I,SELECTED_LETTER
+    rts 
 
 handle_main_j_btn:
-    jmp  handle_main_form_do_result_done 
+    move.w  #ASCII_J,SELECTED_LETTER
+    rts 
 
 handle_main_k_btn:
-    jmp  handle_main_form_do_result_done 
+    move.w  #ASCII_K,SELECTED_LETTER
+    rts 
 
 handle_main_l_btn:
-    jmp  handle_main_form_do_result_done 
+    move.w  #ASCII_L,SELECTED_LETTER
+    rts 
 
 handle_main_m_btn:
-    jmp  handle_main_form_do_result_done 
+    move.w  #ASCII_M,SELECTED_LETTER
+    rts 
 
 handle_main_n_btn:
-    jmp  handle_main_form_do_result_done 
+    move.w  #ASCII_N,SELECTED_LETTER
+    rts 
 
 handle_main_o_btn:
-    jmp  handle_main_form_do_result_done 
+    move.w  #ASCII_O,SELECTED_LETTER
+    rts 
 
 handle_main_p_btn:
-    jmp  handle_main_form_do_result_done 
+    move.w  #ASCII_P,SELECTED_LETTER
+    rts 
 
 handle_main_q_btn:
-    jmp  handle_main_form_do_result_done 
+    move.w  #ASCII_Q,SELECTED_LETTER
+    rts 
 
 handle_main_r_btn:
-    jmp  handle_main_form_do_result_done 
+    move.w  #ASCII_R,SELECTED_LETTER
+    rts 
 
 handle_main_s_btn:
-    jmp  handle_main_form_do_result_done 
+    move.w  #ASCII_S,SELECTED_LETTER
+    rts 
 
 handle_main_t_btn:
-    jmp  handle_main_form_do_result_done 
+    move.w  #ASCII_T,SELECTED_LETTER
+    rts 
 
 handle_main_u_btn:
-    jmp  handle_main_form_do_result_done 
+    move.w  #ASCII_U,SELECTED_LETTER
+    rts 
 
 handle_main_v_btn:
-    jmp  handle_main_form_do_result_done 
+    move.w  #ASCII_V,SELECTED_LETTER
+    rts 
 
 handle_main_w_btn:
-    jmp  handle_main_form_do_result_done 
+    move.w  #ASCII_W,SELECTED_LETTER
+    rts 
 
 handle_main_x_btn:
-    jmp  handle_main_form_do_result_done 
+    move.w  #ASCII_X,SELECTED_LETTER
+    rts 
 
 handle_main_y_btn:
-    jmp  handle_main_form_do_result_done 
+    move.w  #ASCII_Y,SELECTED_LETTER
+    rts 
 
 handle_main_z_btn:
-    jmp  handle_main_form_do_result_done 
+    move.w  #ASCII_Z,SELECTED_LETTER
+    rts 
 
 handle_main_num_btn:
-    jmp  handle_main_form_do_result_done 
+    move.w  #ASCII_HASH,SELECTED_LETTER
+    rts 
 
 handle_main_add_btn:
     jsr     main_form_close
+handle_main_add_btn_next:
     jsr     new_item_open
-    jmp     main_form_open
+    jsr     new_item_do
+    jsr     new_item_close
+    ; check result
+    cmpi.w  #FSEL_BTN,NEW_ITEM_RETVAL
+    beq     new_item_do_fsel
+    cmpi.w  #OK_BTN,NEW_ITEM_RETVAL
+    beq     new_item_do_ok
+    cmpi.w  #CANCEL_BTN,NEW_ITEM_RETVAL    
+    beq     new_item_do_cancel
+    jmp     new_item_do_done
+new_item_do_fsel:
+    move.l  #PATH_BUFFER,-(sp)
+    move.l  #FILE_BUFFER,-(sp)
+    jsr     AES_fsel_input
+    addq.l  #8,sp
+    move.l  #PATH_BUFFER,-(sp)
+    jsr     DEBUG
+    addq.l  #4,sp
+    move.l  #FILE_BUFFER,-(sp)
+    jsr     DEBUG
+    addq.l  #4,sp
+    jmp     handle_main_add_btn_next
+new_item_do_ok:
+    move.l  NAME_TXT_TEDINFO_PTR,-(sp)
+    jsr     DEBUG
+    addq.l  #4,sp
+    jmp     new_item_do_done
+new_item_do_cancel:
+new_item_do_done:
+    jsr     main_form_open
+    rts 
 
 handle_main_remove_btn:
-     jmp  handle_main_form_do_result_done 
+     rts 
 
 handle_main_save_btn:
-     jmp  handle_main_form_do_result_done 
+     rts 
 
 new_item_open:
     move.l  NEW_ITEM_TREE_PTR,-(sp)
@@ -304,46 +371,19 @@ new_item_open:
     move.w  NEW_ITEM_CENTER_H,-(sp)
     jsr     AES_objc_draw
     add.l  #14,sp
-    ; do
-    jsr     new_item_do
     ; done
-    jmp new_item_open
     rts
 
 new_item_do:
+
     move.l  NEW_ITEM_TREE_PTR,-(sp)
+    move.w  #NAME_TXT,-(sp)
     jsr     AES_form_do
-    addq.l  #4,sp
-    clr.l   d0
-    move.w  AES_INT_OUT,d0
-    jsr     handle_new_item_form_result
-    jsr     new_item_close
+    addq.l  #6,sp
+
+    move.w  AES_INT_OUT,NEW_ITEM_RETVAL
     rts
 
-handle_new_item_form_result:
-    cmpi.w  #OK_BTN,d0
-    beq     handle_new_item_ok
-
-    cmpi.w  #CANCEL_BTN,d0
-    beq     handle_new_item_cancel
-
-    cmpi.w  #FSEL_BTN,d0
-    beq     handle_new_item_fsel
-
-    rts
-
-handle_new_item_ok:
-    rts
-
-handle_new_item_cancel:
-    rts
-
-handle_new_item_fsel:
-    move.l  #PATH_BUFFER,-(sp)
-    move.l  #FILE_BUFFER,-(sp)
-    jsr     AES_fsel_input
-    addq.l  #8,sp
-    rts
 
 new_item_close:
     move.w  NEW_ITEM_CENTER_X,-(sp) 
@@ -360,6 +400,7 @@ new_item_close:
 
 MAIN_FORM_TREE_PTR:     ds.l    1
 NEW_ITEM_TREE_PTR:      ds.l    1
+NAME_TXT_TEDINFO_PTR:   ds.l    1
 
 MAIN_FORM_CENTER_X:     ds.w    1
 MAIN_FORM_CENTER_Y:     ds.w    1
@@ -371,10 +412,13 @@ NEW_ITEM_CENTER_Y:      ds.w    1
 NEW_ITEM_CENTER_W:      ds.w    1
 NEW_ITEM_CENTER_H:      ds.w    1
 
-SELECTED_OBJECT:        ds.w    1
+NEW_ITEM_RETVAL:        ds.w    1
+
+SELECTED_LETTER:        ds.w    1
 
 PATH_BUFFER:            ds.w    64
 FILE_BUFFER:            ds.w    7
+
 
 ;--------------------------------------
 	section data
@@ -385,6 +429,8 @@ FILE_BUFFER:            ds.w    7
 	even
 STR_RESOURCE_FILE:
     dc.b    "LAUNCH.RSC",ASCII_NUL
+
+NAME_TXT_BUFFER_SZ     equ 128
 
 ;--------------------------------------
 ;	Includes

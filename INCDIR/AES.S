@@ -333,6 +333,7 @@ AES_form_dial_finish:
     rts
 
 ;   pea     TreePointer
+;   move.w  #FirstEditable
 ;   jsr     AES_form_do
 ;   addq.l  #4,sp
 AES_form_do:
@@ -344,9 +345,9 @@ AES_form_do:
     move.w  #1,AES_CONTROL+AES_CTRL_ADDR_IN
     move.w  #0,AES_CONTROL+AES_CTRL_ADDR_OUT
     ; AES_INT_IN
-    move.w  #0,AES_INT_IN
+    move.w  4(sp),AES_INT_IN
     ; AES_ADDR_IN
-    move.l  4(sp),AES_ADDR_IN
+    move.l  6(sp),AES_ADDR_IN
     jsr     call_aes
     rts
 
@@ -689,6 +690,31 @@ AES_fsel_input:
     move.l  4(sp),AES_ADDR_IN+4
     jsr     call_aes
     rts
+
+;   move.l  TREE_PTR,-(sp)     12
+;   move.w  #OBJ_ID,-(sp)      10
+;   move.l  BUFFER,-(sp)       8
+;   move.l  #BUFFER_LEN,-(sp)  4
+;   jsr     AES_edit_set_buf
+;   addq.l  #12,sp
+AES_edit_set_buf:
+    jsr     AES_zero_arrays
+    ; Control
+    move.w  #AES_EDIT_SET,AES_CONTROL 
+    move.w  #4,AES_CONTROL+AES_CTRL_INT_IN
+    move.w  #0,AES_CONTROL+AES_CTRL_INT_OUT
+    move.w  #2,AES_CONTROL+AES_CTRL_ADDR_IN
+    move.w  #0,AES_CONTROL+AES_CTRL_ADDR_OUT
+    ; Int in
+    move.w  10(sp),AES_INT_IN 
+    move.w  #AES_EDIT_SET_BUF,AES_INT_IN+2
+    move.l  4(sp),AES_INT_IN+4
+    ; addr in
+    move.l  12(sp),AES_ADDR_IN 
+    move.l  8(sp),AES_ADDR_IN+4
+    ; call
+    jsr     call_aes
+    rts
 ;--------------------------------------
 ; AES Constants
 ;--------------------------------------
@@ -765,6 +791,9 @@ AES_PARAM_BLOCK:
 ; Constants
 ;---------------------------------------
 
+; ID
+AES_ID                      EQU	200
+
 ; Application
 AES_APPL_INIT               EQU 10
 AES_APPL_EXIT               EQU	19
@@ -800,8 +829,9 @@ AES_RSRC_FREE               EQU 111
 AES_RSRC_GADDR              EQU 112
 AES_RSRC_OBJFIX             EQU 114
 AES_RSRC_RCFIX              EQU 115
-; ID
-AES_ID                      EQU	200
+; Edit
+AES_EDIT_GET                EQU 216
+AES_EDIT_SET                EQU 217
 
 ; Global Array Offests
 
@@ -822,7 +852,6 @@ AES_CTRL_INT_IN             EQU	2
 AES_CTRL_INT_OUT            EQU	4
 AES_CTRL_ADDR_IN            EQU	6
 AES_CTRL_ADDR_OUT           EQU	8
-
 
 ; Array Sizes
 
@@ -936,3 +965,6 @@ AES_FMD_START               EQU 0
 AES_FMD_GROW                EQU 1
 AES_FMD_SHRINK              EQU 2
 AES_FMD_FINISH              EQU 3
+
+; Edit
+AES_EDIT_SET_BUF            EQU 0
